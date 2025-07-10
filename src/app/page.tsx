@@ -1,103 +1,249 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { FiSearch, FiFilter } from 'react-icons/fi'
+import { getAuthFromStorage } from '@/lib/auth'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { Product, AuthState } from '@/types'
+import SupabaseSetup from '@/components/SupabaseSetup'
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function HomePage() {
+  const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
+  const [products, setProducts] = useState<Product[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'selling' | 'reserved' | 'sold'>('all')
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    // Supabase 설정 확인
+    if (!isSupabaseConfigured()) {
+      setIsLoading(false)
+      return
+    }
+
+    const authState = getAuthFromStorage()
+    setAuth(authState)
+    
+    // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+    if (!authState.user && !authState.isAdmin) {
+      router.push('/login')
+      return
+    }
+    
+    fetchProducts()
+  }, [router])
+
+  useEffect(() => {
+    // 검색 및 필터 적용
+    let filtered = products
+
+    if (searchTerm) {
+      filtered = filtered.filter(product => 
+        product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(product => product.status === statusFilter)
+    }
+
+    setFilteredProducts(filtered)
+  }, [products, searchTerm, statusFilter])
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching products:', error)
+      } else {
+        setProducts(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'selling':
+        return '판매중'
+      case 'reserved':
+        return '예약됨'
+      case 'sold':
+        return '거래완료'
+      default:
+        return status
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'selling':
+        return 'bg-green-100 text-green-800'
+      case 'reserved':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'sold':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ko-KR').format(price)
+  }
+
+  // Supabase가 설정되지 않은 경우
+  if (!isSupabaseConfigured()) {
+    return <SupabaseSetup />
+  }
+
+  if (auth.isLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 py-6">
+      {/* 검색 및 필터 */}
+      <div className="space-y-4 mb-6">
+        {/* 검색바 */}
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="상품명, 설명 검색..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+
+        {/* 상태 필터 */}
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <FiFilter className="text-gray-400 flex-shrink-0" size={18} />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                statusFilter === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              전체
+            </button>
+            <button
+              onClick={() => setStatusFilter('selling')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                statusFilter === 'selling' 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              판매중
+            </button>
+            <button
+              onClick={() => setStatusFilter('reserved')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                statusFilter === 'reserved' 
+                  ? 'bg-yellow-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              예약됨
+            </button>
+            <button
+              onClick={() => setStatusFilter('sold')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                statusFilter === 'sold' 
+                  ? 'bg-gray-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              거래완료
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 상품 목록 */}
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 mb-4">
+            {searchTerm || statusFilter !== 'all' ? '검색 결과가 없습니다.' : '등록된 상품이 없습니다.'}
+          </p>
+          <Link
+            href="/upload"
+            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            첫 상품 등록하기
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredProducts.map((product) => (
+            <Link
+              key={product.id}
+              href={`/detail/${product.id}`}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow block"
+            >
+              <div className="flex">
+                {/* 상품 이미지 */}
+                <div className="w-32 h-24 bg-gray-100 relative flex-shrink-0 rounded-l-lg overflow-hidden">
+                  {product.images && product.images.length > 0 ? (
+                    <img
+                      src={product.images[0]}
+                      alt={product.title}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <span className="text-2xl">📦</span>
+                    </div>
+                  )}
+                  {/* 상태 배지 */}
+                  <div className="absolute top-1 right-1">
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(product.status)}`}>
+                      {getStatusText(product.status)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 상품 정보 */}
+                <div className="flex-1 p-4 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{product.title}</h3>
+                    <p className="text-lg font-bold text-blue-600 mb-2">{formatPrice(product.price)}원</p>
+                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{product.seller_name}</span>
+                    <span>{new Date(product.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
-  );
+  )
 }
