@@ -108,7 +108,7 @@ export default function UploadPage() {
       const fileName = `${uuidv4()}.${fileExt}`
       const filePath = `product-images/${fileName}`
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('images')
         .upload(filePath, file)
 
