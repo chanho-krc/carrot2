@@ -147,7 +147,7 @@ export default function LoginPage() {
                 type="text"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black bg-white placeholder:text-gray-500"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 !text-black bg-white placeholder:text-gray-500"
                 placeholder="홍길동"
                 disabled={isLoading}
               />
@@ -162,7 +162,7 @@ export default function LoginPage() {
                 type="tel"
                 value={userPhone}
                 onChange={(e) => setUserPhone(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black bg-white placeholder:text-gray-500"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 !text-black bg-white placeholder:text-gray-500"
                 placeholder="010-1234-5678"
                 disabled={isLoading}
               />
@@ -190,7 +190,7 @@ export default function LoginPage() {
                 type="text"
                 value={adminId}
                 onChange={(e) => setAdminId(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black bg-white placeholder:text-gray-500"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 !text-black bg-white placeholder:text-gray-500"
                 placeholder="admin"
                 disabled={isLoading}
               />
@@ -205,7 +205,7 @@ export default function LoginPage() {
                 type="password"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black bg-white placeholder:text-gray-500"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 !text-black bg-white placeholder:text-gray-500"
                 placeholder="비밀번호 입력"
                 disabled={isLoading}
               />
