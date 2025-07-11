@@ -36,34 +36,63 @@ export default function LoginPage() {
   useEffect(() => {
     // 페이지 로드 후 모든 input 필드의 텍스트 색상을 강제로 검은색으로 설정
     const forceBlackText = () => {
-      const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"]')
+      const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"], #user-name, #user-phone, #admin-id, #admin-password')
       inputs.forEach((input) => {
         const element = input as HTMLInputElement
-        element.style.color = '#000000'
-        element.style.webkitTextFillColor = '#000000'
+        // 모든 가능한 방법으로 검은색 적용
+        element.style.cssText += 'color: #000000 !important; -webkit-text-fill-color: #000000 !important;'
         element.style.setProperty('color', '#000000', 'important')
         element.style.setProperty('-webkit-text-fill-color', '#000000', 'important')
+        element.style.setProperty('-moz-text-fill-color', '#000000', 'important')
+        element.setAttribute('style', element.getAttribute('style') + '; color: #000000 !important; -webkit-text-fill-color: #000000 !important;')
       })
     }
     
     // 페이지 로드시 즉시 실행
     forceBlackText()
     
-    // 100ms 후에 다시 실행 (브라우저 자동완성 등을 위해)
-    const timer = setTimeout(forceBlackText, 100)
+    // 여러 타이밍에 실행
+    const timers = [
+      setTimeout(forceBlackText, 50),
+      setTimeout(forceBlackText, 100),
+      setTimeout(forceBlackText, 200),
+      setTimeout(forceBlackText, 500),
+      setTimeout(forceBlackText, 1000)
+    ]
     
-    // input에 이벤트 리스너 추가
-    const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"]')
+    // input에 모든 가능한 이벤트 리스너 추가
+    const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"], #user-name, #user-phone, #admin-id, #admin-password')
     inputs.forEach((input) => {
-      input.addEventListener('input', forceBlackText)
-      input.addEventListener('focus', forceBlackText)
+      const events = ['input', 'focus', 'blur', 'change', 'keyup', 'keydown', 'paste']
+      events.forEach(event => {
+        input.addEventListener(event, forceBlackText)
+      })
     })
     
+    // MutationObserver로 DOM 변경 감지
+    const observer = new MutationObserver(() => {
+      forceBlackText()
+    })
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    })
+    
+    // 주기적으로 강제 실행
+    const interval = setInterval(forceBlackText, 500)
+    
     return () => {
-      clearTimeout(timer)
+      timers.forEach(timer => clearTimeout(timer))
+      clearInterval(interval)
+      observer.disconnect()
       inputs.forEach((input) => {
-        input.removeEventListener('input', forceBlackText)
-        input.removeEventListener('focus', forceBlackText)
+        const events = ['input', 'focus', 'blur', 'change', 'keyup', 'keydown', 'paste']
+        events.forEach(event => {
+          input.removeEventListener(event, forceBlackText)
+        })
       })
     }
   }, [])
