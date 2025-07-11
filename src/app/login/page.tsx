@@ -34,65 +34,138 @@ export default function LoginPage() {
   }, [router])
 
   useEffect(() => {
-    // 페이지 로드 후 모든 input 필드의 텍스트 색상을 강제로 검은색으로 설정
+    // 가장 강력한 텍스트 색상 강제 적용 함수
     const forceBlackText = () => {
-      const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"], #user-name, #user-phone, #admin-id, #admin-password')
-      inputs.forEach((input) => {
-        const element = input as HTMLInputElement
-        // 모든 가능한 방법으로 검은색 적용
-        element.style.cssText += 'color: #000000 !important; -webkit-text-fill-color: #000000 !important;'
-        element.style.setProperty('color', '#000000', 'important')
-        element.style.setProperty('-webkit-text-fill-color', '#000000', 'important')
-        element.style.setProperty('-moz-text-fill-color', '#000000', 'important')
-        element.setAttribute('style', element.getAttribute('style') + '; color: #000000 !important; -webkit-text-fill-color: #000000 !important;')
+      const selectors = [
+        'input[type="text"]',
+        'input[type="tel"]', 
+        'input[type="password"]',
+        '#user-name',
+        '#user-phone', 
+        '#admin-id',
+        '#admin-password',
+        'input',
+        'form input',
+        'div input'
+      ]
+      
+      selectors.forEach(selector => {
+        const inputs = document.querySelectorAll(selector)
+        inputs.forEach((input) => {
+          const element = input as HTMLInputElement
+          
+          // 스타일 완전 재설정
+          const forceStyle = 'color: #000000 !important; -webkit-text-fill-color: #000000 !important; -moz-text-fill-color: #000000 !important; background-color: #ffffff !important; caret-color: #000000 !important;'
+          
+          // 모든 가능한 방법으로 강제 적용
+          element.style.cssText = forceStyle
+          element.setAttribute('style', forceStyle)
+          
+          // 개별 속성 강제 설정
+          const properties = [
+            'color', 
+            '-webkit-text-fill-color', 
+            '-moz-text-fill-color',
+            '-ms-text-fill-color',
+            'background-color',
+            'caret-color'
+          ]
+          
+          properties.forEach(prop => {
+            const value = prop.includes('background') ? '#ffffff' : '#000000'
+            element.style.setProperty(prop, value, 'important')
+          })
+          
+          // 클래스 강제 추가
+          element.classList.add('force-black-text')
+          
+          // 데이터 속성으로 마킹
+          element.setAttribute('data-force-black', 'true')
+        })
       })
     }
     
-    // 페이지 로드시 즉시 실행
+    // 강제 CSS 스타일 추가
+    const addForceCSS = () => {
+      const styleId = 'force-black-text-style'
+      let styleElement = document.getElementById(styleId)
+      
+      if (!styleElement) {
+        styleElement = document.createElement('style')
+        styleElement.id = styleId
+        document.head.appendChild(styleElement)
+      }
+      
+      styleElement.textContent = \`
+        .force-black-text,
+        input[data-force-black="true"],
+        #user-name,
+        #user-phone,
+        #admin-id,
+        #admin-password {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+          -moz-text-fill-color: #000000 !important;
+          background-color: #ffffff !important;
+          caret-color: #000000 !important;
+        }
+      \`
+    }
+    
+    // 즉시 실행
+    addForceCSS()
     forceBlackText()
     
-    // 여러 타이밍에 실행
-    const timers = [
-      setTimeout(forceBlackText, 50),
-      setTimeout(forceBlackText, 100),
-      setTimeout(forceBlackText, 200),
-      setTimeout(forceBlackText, 500),
-      setTimeout(forceBlackText, 1000)
+    // 다양한 타이밍에 실행
+    const timers = []
+    for (let i = 0; i < 20; i++) {
+      timers.push(setTimeout(() => {
+        addForceCSS()
+        forceBlackText()
+      }, i * 100))
+    }
+    
+    // requestAnimationFrame으로 지속적 실행
+    let animationId: number
+    const animate = () => {
+      forceBlackText()
+      animationId = requestAnimationFrame(animate)
+    }
+    animationId = requestAnimationFrame(animate)
+    
+    // 모든 가능한 이벤트에 리스너 추가
+    const allEvents = [
+      'input', 'focus', 'blur', 'change', 'keyup', 'keydown', 'paste',
+      'click', 'mousedown', 'mouseup', 'touchstart', 'touchend',
+      'DOMContentLoaded', 'load', 'resize', 'scroll'
     ]
     
-    // input에 모든 가능한 이벤트 리스너 추가
-    const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"], #user-name, #user-phone, #admin-id, #admin-password')
-    inputs.forEach((input) => {
-      const events = ['input', 'focus', 'blur', 'change', 'keyup', 'keydown', 'paste']
-      events.forEach(event => {
-        input.addEventListener(event, forceBlackText)
-      })
+    allEvents.forEach(event => {
+      document.addEventListener(event, forceBlackText)
     })
     
-    // MutationObserver로 DOM 변경 감지
-    const observer = new MutationObserver(() => {
-      forceBlackText()
-    })
-    
+    // MutationObserver
+    const observer = new MutationObserver(forceBlackText)
     observer.observe(document.body, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['style', 'class']
+      attributeFilter: ['style', 'class', 'value']
     })
     
-    // 주기적으로 강제 실행
-    const interval = setInterval(forceBlackText, 500)
+    // 주기적 강제 실행
+    const interval = setInterval(() => {
+      addForceCSS()
+      forceBlackText()
+    }, 100)
     
     return () => {
       timers.forEach(timer => clearTimeout(timer))
       clearInterval(interval)
+      cancelAnimationFrame(animationId)
       observer.disconnect()
-      inputs.forEach((input) => {
-        const events = ['input', 'focus', 'blur', 'change', 'keyup', 'keydown', 'paste']
-        events.forEach(event => {
-          input.removeEventListener(event, forceBlackText)
-        })
+      allEvents.forEach(event => {
+        document.removeEventListener(event, forceBlackText)
       })
     }
   }, [])

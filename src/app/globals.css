@@ -78,3 +78,78 @@ input {
   -ms-text-fill-color: #000000 !important;
   text-fill-color: #000000 !important;
 }
+
+/* 가장 강력한 방법 - 모든 가능한 selector 조합 */
+* {
+  color: inherit !important;
+}
+
+input,
+input[type],
+input[type="text"],
+input[type="tel"], 
+input[type="password"],
+input[type="email"],
+input[type="search"],
+.login input,
+#user-name,
+#user-phone,
+#admin-id,
+#admin-password,
+form input,
+div input,
+body input,
+html input {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  -webkit-appearance: none !important;
+  -moz-text-fill-color: #000000 !important;
+  -ms-text-fill-color: #000000 !important;
+  text-fill-color: #000000 !important;
+  background-color: #ffffff !important;
+  caret-color: #000000 !important;
+}
+
+/* 브라우저 자동완성 완전 무효화 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* 모든 상태에서 강제 적용 */
+input:focus,
+input:active,
+input:hover,
+input:visited,
+input:focus-visible,
+input:focus-within {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  -moz-text-fill-color: #000000 !important;
+  outline-color: #000000 !important;
+}
+
+/* 특정 ID에 대한 강제 적용 */
+#user-name,
+#user-name:focus,
+#user-name:active,
+#user-phone,
+#user-phone:focus,
+#user-phone:active,
+#admin-id,
+#admin-id:focus,
+#admin-id:active,
+#admin-password,
+#admin-password:focus,
+#admin-password:active {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  background-color: #ffffff !important;
+}
