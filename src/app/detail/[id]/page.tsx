@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2 } from 'react-icons/fi'
+import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2, FiEye } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Product, AuthState, ProductStatus } from '@/types'
@@ -48,12 +48,29 @@ export default function ProductDetailPage() {
       } else {
         setProduct(data)
         setSelectedStatus(data.status)
+        
+        // 조회수 증가 (비동기로 실행하여 페이지 로딩 속도에 영향 주지 않음)
+        incrementViewCount(productId)
       }
     } catch (error) {
       setError('상품을 불러오는 중 오류가 발생했습니다.')
       console.error('Error fetching product:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const incrementViewCount = async (productId: string) => {
+    try {
+      const { error } = await supabase.rpc('increment_view_count', {
+        product_id: productId
+      })
+
+      if (error) {
+        console.error('Error incrementing view count:', error)
+      }
+    } catch (error) {
+      console.error('Error incrementing view count:', error)
     }
   }
 
@@ -294,6 +311,10 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-2">
                 <FiCalendar className="text-gray-400" size={18} />
                 <span className="text-gray-700">{new Date(product.created_at).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiEye className="text-gray-400" size={18} />
+                <span className="text-gray-700">조회수 {product.view_count || 0}</span>
               </div>
             </div>
           </div>

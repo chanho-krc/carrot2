@@ -17,6 +17,7 @@ export interface Product {
   seller_id: string
   status: 'selling' | 'reserved' | 'sold'
   images: string[]
+  view_count: number
   created_at: string
   updated_at: string
 }

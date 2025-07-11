@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { FiSearch, FiFilter } from 'react-icons/fi'
+import { FiSearch, FiFilter, FiEye } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Product, AuthState } from '@/types'
@@ -235,7 +235,13 @@ export default function HomePage() {
                     <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{product.seller_name}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{product.seller_name}</span>
+                      <span className="flex items-center gap-1">
+                        <FiEye size={12} />
+                        {product.view_count || 0}
+                      </span>
+                    </div>
                     <span>{new Date(product.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>

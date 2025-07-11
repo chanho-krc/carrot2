@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { FiEdit3, FiTrash2, FiEye } from 'react-icons/fi'
+import { FiEdit3, FiTrash2, FiEye, FiUser, FiCalendar } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Product, AuthState, ProductStatus } from '@/types'
@@ -254,8 +254,20 @@ export default function MyProductsPage() {
                       {product.description}
                     </p>
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                      <span>{product.seller_name}</span>
-                      <span>{new Date(product.created_at).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-2">
+                        <FiUser size={12} />
+                        <span>{product.seller_name}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <FiEye size={12} />
+                          {product.view_count || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FiCalendar size={12} />
+                          {new Date(product.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
 
                     {/* 액션 버튼 */}

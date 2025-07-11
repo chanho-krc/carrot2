@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { FiUsers, FiPackage, FiBarChart, FiEye, FiEdit3, FiTrash2 } from 'react-icons/fi'
+import { FiUsers, FiPackage, FiBarChart, FiEye, FiEdit3, FiTrash2, FiUser, FiCalendar } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Product, User, AuthState, ProductStatus } from '@/types'
@@ -356,8 +356,20 @@ export default function AdminDashboard() {
                       <p className="text-lg font-bold text-blue-600 mb-2">{formatPrice(product.price)}원</p>
                       <p className="text-sm text-gray-600 mb-2">{product.description}</p>
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                        <span>판매자: {product.seller_name}</span>
-                        <span>{new Date(product.created_at).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-2">
+                          <FiUser size={12} />
+                          <span>판매자: {product.seller_name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1">
+                            <FiEye size={12} />
+                            조회수 {product.view_count || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FiCalendar size={12} />
+                            {new Date(product.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Link
