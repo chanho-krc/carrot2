@@ -33,6 +33,41 @@ export default function LoginPage() {
     }
   }, [router])
 
+  useEffect(() => {
+    // 페이지 로드 후 모든 input 필드의 텍스트 색상을 강제로 검은색으로 설정
+    const forceBlackText = () => {
+      const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"]')
+      inputs.forEach((input) => {
+        const element = input as HTMLInputElement
+        element.style.color = '#000000'
+        element.style.webkitTextFillColor = '#000000'
+        element.style.setProperty('color', '#000000', 'important')
+        element.style.setProperty('-webkit-text-fill-color', '#000000', 'important')
+      })
+    }
+    
+    // 페이지 로드시 즉시 실행
+    forceBlackText()
+    
+    // 100ms 후에 다시 실행 (브라우저 자동완성 등을 위해)
+    const timer = setTimeout(forceBlackText, 100)
+    
+    // input에 이벤트 리스너 추가
+    const inputs = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="password"]')
+    inputs.forEach((input) => {
+      input.addEventListener('input', forceBlackText)
+      input.addEventListener('focus', forceBlackText)
+    })
+    
+    return () => {
+      clearTimeout(timer)
+      inputs.forEach((input) => {
+        input.removeEventListener('input', forceBlackText)
+        input.removeEventListener('focus', forceBlackText)
+      })
+    }
+  }, [])
+
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
