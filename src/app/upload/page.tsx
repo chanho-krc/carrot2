@@ -192,6 +192,57 @@ export default function UploadPage() {
       // 이미지 업로드
       const imageUrls = await uploadImages()
 
+      // seller_id 검증 및 설정
+      let sellerId: string
+      if (auth.isAdmin) {
+        // 관리자인 경우 admin 사용자 생성 또는 확인
+        const { data: adminUser, error: adminError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('phone', 'admin')
+          .single()
+        
+        if (adminError && adminError.code === 'PGRST116') {
+          // admin 사용자가 없으면 생성
+          const { data: newAdminUser, error: createAdminError } = await supabase
+            .from('users')
+            .insert([{
+              name: '관리자',
+              phone: 'admin',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single()
+          
+          if (createAdminError) {
+            console.error('Admin user creation error:', createAdminError)
+            throw new Error('관리자 계정 설정 중 오류가 발생했습니다.')
+          }
+          sellerId = newAdminUser.id
+        } else if (adminError) {
+          console.error('Admin user check error:', adminError)
+          throw new Error('관리자 계정 확인 중 오류가 발생했습니다.')
+        } else {
+          sellerId = adminUser.id
+        }
+      } else if (auth.user?.id) {
+        // 일반 사용자인 경우 사용자 존재 확인
+        const { data: existingUser, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', auth.user.id)
+          .single()
+        
+        if (userError) {
+          console.error('User validation error:', userError)
+          throw new Error('사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.')
+        }
+        sellerId = existingUser.id
+      } else {
+        throw new Error('로그인 정보를 확인할 수 없습니다. 다시 로그인해주세요.')
+      }
+
       // 상품 데이터 Supabase에 저장
       const { error } = await supabase
         .from('products')
@@ -199,23 +250,20 @@ export default function UploadPage() {
           title: formData.title,
           description: formData.description,
           price: formData.type === 'share' ? 0 : parseFloat(formData.price),
-          original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
+          original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
           usage_period: formData.usagePeriod,
           contact: formData.contact,
           seller_name: formData.sellerName,
-          seller_id: auth.user?.id || (auth.isAdmin ? 'admin' : ''),
+          seller_id: sellerId,
           status: 'selling',
           type: formData.type as 'sale' | 'share',
           category: formData.category,
           images: imageUrls,
-          view_count: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          view_count: 0
         }])
-        .select()
-        .single()
 
       if (error) {
+        console.error('Supabase insert error:', error)
         throw error
       }
 
@@ -226,9 +274,27 @@ export default function UploadPage() {
         router.push('/')
       }, 2000)
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error uploading product:', error)
-      setError('상품 등록 중 오류가 발생했습니다.')
+      
+      // 더 구체적인 에러 메시지 제공
+      if (error instanceof Error) {
+        setError(error.message)
+      } else if (typeof error === 'object' && error !== null && 'code' in error) {
+        const dbError = error as { code: string; message?: string }
+        switch (dbError.code) {
+          case '23503':
+            setError('사용자 정보가 올바르지 않습니다. 다시 로그인해주세요.')
+            break
+          case '23505':
+            setError('중복된 상품 정보입니다.')
+            break
+          default:
+            setError(`상품 등록 중 오류가 발생했습니다. (에러 코드: ${dbError.code})`)
+        }
+      } else {
+        setError('상품 등록 중 오류가 발생했습니다.')
+      }
     } finally {
       setIsLoading(false)
     }
