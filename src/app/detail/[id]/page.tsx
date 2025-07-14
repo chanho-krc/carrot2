@@ -537,38 +537,56 @@ export default function ProductDetailPage() {
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-semibold mb-4">상품 상태 변경</h3>
               <div className="space-y-2 mb-6">
-                <label className="flex items-center">
+                <label className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                  selectedStatus === 'selling' 
+                    ? 'bg-blue-50 border-blue-300' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}>
                   <input
                     type="radio"
                     name="status"
                     value="selling"
                     checked={selectedStatus === 'selling'}
                     onChange={(e) => setSelectedStatus(e.target.value as ProductStatus)}
-                    className="mr-2"
+                    className="mr-3"
                   />
-                  판매중
+                  <span className={`font-medium ${selectedStatus === 'selling' ? 'text-blue-600' : 'text-gray-700'}`}>
+                    판매중
+                  </span>
                 </label>
-                <label className="flex items-center">
+                <label className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                  selectedStatus === 'reserved' 
+                    ? 'bg-yellow-50 border-yellow-300' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}>
                   <input
                     type="radio"
                     name="status"
                     value="reserved"
                     checked={selectedStatus === 'reserved'}
                     onChange={(e) => setSelectedStatus(e.target.value as ProductStatus)}
-                    className="mr-2"
+                    className="mr-3"
                   />
-                  예약됨
+                  <span className={`font-medium ${selectedStatus === 'reserved' ? 'text-yellow-600' : 'text-gray-700'}`}>
+                    예약됨
+                  </span>
                 </label>
-                <label className="flex items-center">
+                <label className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                  selectedStatus === 'sold' 
+                    ? 'bg-green-50 border-green-300' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}>
                   <input
                     type="radio"
                     name="status"
                     value="sold"
                     checked={selectedStatus === 'sold'}
                     onChange={(e) => setSelectedStatus(e.target.value as ProductStatus)}
-                    className="mr-2"
+                    className="mr-3"
                   />
-                  거래완료
+                  <span className={`font-medium ${selectedStatus === 'sold' ? 'text-green-600' : 'text-gray-700'}`}>
+                    거래완료
+                  </span>
                 </label>
               </div>
               <div className="flex gap-2">
