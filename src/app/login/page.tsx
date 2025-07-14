@@ -96,7 +96,7 @@ export default function LoginPage() {
         document.head.appendChild(styleElement)
       }
       
-      styleElement.textContent = \`
+      styleElement.textContent = `
         .force-black-text,
         input[data-force-black="true"],
         #user-name,
@@ -109,7 +109,7 @@ export default function LoginPage() {
           background-color: #ffffff !important;
           caret-color: #000000 !important;
         }
-      \`
+      `
     }
     
     // 즉시 실행
@@ -117,7 +117,7 @@ export default function LoginPage() {
     forceBlackText()
     
     // 다양한 타이밍에 실행
-    const timers = []
+    const timers: NodeJS.Timeout[] = []
     for (let i = 0; i < 20; i++) {
       timers.push(setTimeout(() => {
         addForceCSS()

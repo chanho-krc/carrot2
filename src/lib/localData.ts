@@ -18,6 +18,7 @@ const INITIAL_PRODUCTS: Product[] = [
     seller_id: 'demo-user-1',
     status: 'selling',
     images: [],
+    view_count: 0,
     created_at: '2024-01-15T10:00:00Z',
     updated_at: '2024-01-15T10:00:00Z'
   },
@@ -32,6 +33,7 @@ const INITIAL_PRODUCTS: Product[] = [
     seller_id: 'demo-user-2',
     status: 'reserved',
     images: [],
+    view_count: 0,
     created_at: '2024-01-14T15:30:00Z',
     updated_at: '2024-01-14T15:30:00Z'
   },
@@ -46,6 +48,7 @@ const INITIAL_PRODUCTS: Product[] = [
     seller_id: 'demo-user-3',
     status: 'sold',
     images: [],
+    view_count: 0,
     created_at: '2024-01-13T09:15:00Z',
     updated_at: '2024-01-13T09:15:00Z'
   }
