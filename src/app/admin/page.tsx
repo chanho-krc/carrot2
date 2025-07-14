@@ -379,6 +379,13 @@ export default function AdminDashboard() {
                           <FiEye size={14} />
                           보기
                         </Link>
+                        <Link
+                          href={`/edit/${product.id}`}
+                          className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 text-sm"
+                        >
+                          <FiEdit3 size={14} />
+                          수정
+                        </Link>
                         <button
                           onClick={() => openStatusModal(product)}
                           className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm"

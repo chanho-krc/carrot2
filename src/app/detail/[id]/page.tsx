@@ -211,6 +211,13 @@ export default function ProductDetailPage() {
           {canManageProduct() && (
             <div className="flex items-center gap-2">
               <button
+                onClick={() => router.push(`/edit/${product.id}`)}
+                className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 text-sm"
+              >
+                <FiEdit3 size={14} />
+                수정
+              </button>
+              <button
                 onClick={() => setShowStatusModal(true)}
                 className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm"
               >
@@ -292,12 +299,21 @@ export default function ProductDetailPage() {
               <p className="text-gray-700 whitespace-pre-wrap">{product.description}</p>
             </div>
 
-            {product.usage_period && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">사용 기간</h3>
-                <p className="text-gray-700">{product.usage_period}</p>
-              </div>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {product.usage_period && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">사용 기간</h3>
+                  <p className="text-gray-700">{product.usage_period}</p>
+                </div>
+              )}
+
+              {product.original_price && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">구매시 가격</h3>
+                  <p className="text-gray-700">{formatPrice(product.original_price)}원</p>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
               <div className="flex items-center gap-2">

@@ -11,6 +11,7 @@ export interface Product {
   title: string
   description: string
   price: number
+  original_price?: number
   usage_period: string
   contact: string
   seller_name: string
