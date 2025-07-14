@@ -156,12 +156,26 @@ export default function ProductDetailPage() {
   }
 
   const handleReserveProduct = async () => {
-    if (!product || product.status !== 'selling') return
+    if (!product || product.status !== 'selling' || !auth.user) return
 
     const confirmed = window.confirm('이 상품을 예약하시겠습니까?')
     if (!confirmed) return
 
-    await handleStatusChange('reserved')
+    // 예약자 정보와 함께 상태 변경
+    const updatedProduct = updateProduct(product.id, {
+      status: 'reserved',
+      reserved_by_id: auth.user.id,
+      reserved_by_name: auth.user.name,
+      reserved_by_phone: auth.user.phone,
+      reserved_at: new Date().toISOString()
+    })
+
+    if (updatedProduct) {
+      setProduct(updatedProduct)
+      alert('예약이 완료되었습니다!')
+    } else {
+      alert('예약 처리 중 오류가 발생했습니다.')
+    }
   }
 
   const handleShareRequest = () => {
@@ -413,6 +427,38 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* 예약자 정보 표시 (판매자만 볼 수 있음) */}
+        {canManageProduct() && product.status === 'reserved' && product.reserved_by_name && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-semibold text-yellow-800 mb-3">📋 예약자 정보</h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <FiUser className="text-yellow-600" size={16} />
+                <span className="text-gray-700">
+                  <strong>이름:</strong> {product.reserved_by_name}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiPhone className="text-yellow-600" size={16} />
+                <span className="text-gray-700">
+                  <strong>연락처:</strong> {product.reserved_by_phone}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiCalendar className="text-yellow-600" size={16} />
+                <span className="text-gray-700">
+                  <strong>예약 시간:</strong> {product.reserved_at ? new Date(product.reserved_at).toLocaleString() : '정보 없음'}
+                </span>
+              </div>
+            </div>
+            <div className="mt-3 p-3 bg-yellow-100 rounded-md">
+              <p className="text-sm text-yellow-800">
+                💡 예약자와 직접 연락하여 거래를 진행하세요. 거래 완료 후 상태를 &quot;거래완료&quot;로 변경해주세요.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 구매/나눔 신청 버튼 */}
         {!canManageProduct() && product.status === 'selling' && (

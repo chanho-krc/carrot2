@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FiSearch, FiFilter, FiEye } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
-import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Product, AuthState } from '@/types'
-import SupabaseSetup from '@/components/SupabaseSetup'
+import { getProducts } from '@/lib/localData'
 
 export default function HomePage() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
@@ -22,12 +21,6 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Supabase 설정 확인
-    if (!isSupabaseConfigured()) {
-      setIsLoading(false)
-      return
-    }
-
     const authState = getAuthFromStorage()
     setAuth(authState)
     
@@ -69,18 +62,10 @@ export default function HomePage() {
   // 카테고리 목록 추출
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
 
-  const fetchProducts = async () => {
+  const fetchProducts = () => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching products:', error)
-      } else {
-        setProducts(data || [])
-      }
+      const data = getProducts()
+      setProducts(data)
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -118,10 +103,7 @@ export default function HomePage() {
     return new Intl.NumberFormat('ko-KR').format(price)
   }
 
-  // Supabase가 설정되지 않은 경우
-  if (!isSupabaseConfigured()) {
-    return <SupabaseSetup />
-  }
+
 
   if (auth.isLoading || isLoading) {
     return (

@@ -4,10 +4,8 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FiCamera, FiX, FiUpload } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
 import { AuthState } from '@/types'
-import { addProduct } from '@/lib/localData'
-import { v4 as uuidv4 } from 'uuid'
+import { addProduct, uploadImages as uploadLocalImages } from '@/lib/localData'
 
 // 카테고리 목록
 const CATEGORIES = [
@@ -120,29 +118,13 @@ export default function UploadPage() {
 
   const uploadImages = async (): Promise<string[]> => {
     if (selectedImages.length === 0) return []
-
-    const uploadPromises = selectedImages.map(async (file) => {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${uuidv4()}.${fileExt}`
-      const filePath = `product-images/${fileName}`
-
-      const { error } = await supabase.storage
-        .from('images')
-        .upload(filePath, file)
-
-      if (error) {
-        throw error
-      }
-
-      // 공개 URL 가져오기
-      const { data: publicUrlData } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath)
-
-      return publicUrlData.publicUrl
-    })
-
-    return Promise.all(uploadPromises)
+    
+    try {
+      const imageUrls = await uploadLocalImages(selectedImages)
+      return imageUrls
+    } catch {
+      throw new Error('이미지 업로드에 실패했습니다.')
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -332,29 +314,37 @@ export default function UploadPage() {
               거래 유형 *
             </label>
             <div className="flex gap-4">
-              <label className="flex items-center">
+              <label className={`cursor-pointer flex items-center px-4 py-3 rounded-lg border-2 transition-all ${
+                formData.type === 'sale' 
+                  ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                  : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-blue-200'
+              }`}>
                 <input
                   type="radio"
                   name="type"
                   value="sale"
                   checked={formData.type === 'sale'}
                   onChange={handleInputChange}
-                  className="mr-2"
+                  className="mr-2 text-blue-600"
                   disabled={isLoading}
                 />
-                <span className="text-sm">💰 판매</span>
+                <span className="font-medium">💰 판매</span>
               </label>
-              <label className="flex items-center">
+              <label className={`cursor-pointer flex items-center px-4 py-3 rounded-lg border-2 transition-all ${
+                formData.type === 'share' 
+                  ? 'border-green-500 bg-green-50 text-green-700' 
+                  : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-green-200'
+              }`}>
                 <input
                   type="radio"
                   name="type"
                   value="share"
                   checked={formData.type === 'share'}
                   onChange={handleInputChange}
-                  className="mr-2"
+                  className="mr-2 text-green-600"
                   disabled={isLoading}
                 />
-                <span className="text-sm">💝 나눔</span>
+                <span className="font-medium">💝 나눔</span>
               </label>
             </div>
           </div>

@@ -270,6 +270,26 @@ export default function MyProductsPage() {
                       </div>
                     </div>
 
+                    {/* 예약자 정보 표시 */}
+                    {product.status === 'reserved' && product.reserved_by_name && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-medium text-yellow-800">📋 예약자 정보</span>
+                        </div>
+                        <div className="text-sm text-gray-700 space-y-1">
+                          <div>
+                            <strong>이름:</strong> {product.reserved_by_name}
+                          </div>
+                          <div>
+                            <strong>연락처:</strong> {product.reserved_by_phone}
+                          </div>
+                          <div>
+                            <strong>예약 시간:</strong> {product.reserved_at ? new Date(product.reserved_at).toLocaleString() : '정보 없음'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* 액션 버튼 */}
                     <div className="flex items-center gap-2">
                       <Link

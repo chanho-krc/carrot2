@@ -21,6 +21,11 @@ export interface Product {
   category: string // 카테고리
   images: string[]
   view_count: number
+  // 예약자 정보
+  reserved_by_id?: string
+  reserved_by_name?: string
+  reserved_by_phone?: string
+  reserved_at?: string
   created_at: string
   updated_at: string
 }
