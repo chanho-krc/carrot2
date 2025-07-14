@@ -17,10 +17,22 @@ export interface Product {
   seller_name: string
   seller_id: string
   status: 'selling' | 'reserved' | 'sold'
+  type: 'sale' | 'share' // 판매/나눔 구분
+  category: string // 카테고리
   images: string[]
   view_count: number
   created_at: string
   updated_at: string
+}
+
+// 나눔 신청을 위한 인터페이스
+export interface ShareRequest {
+  id: string
+  product_id: string
+  requester_name: string
+  requester_id: string
+  reason: string // 신청 사연
+  created_at: string
 }
 
 export interface AuthState {
@@ -29,4 +41,5 @@ export interface AuthState {
   isLoading: boolean
 }
 
-export type ProductStatus = 'selling' | 'reserved' | 'sold' 
+export type ProductStatus = 'selling' | 'reserved' | 'sold'
+export type ProductType = 'sale' | 'share' 

@@ -15,7 +15,10 @@ export default function HomePage() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'selling' | 'reserved' | 'sold'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'sale' | 'share'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
+  const [showQR, setShowQR] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -52,8 +55,19 @@ export default function HomePage() {
       filtered = filtered.filter(product => product.status === statusFilter)
     }
 
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(product => product.type === typeFilter)
+    }
+
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(product => product.category === categoryFilter)
+    }
+
     setFilteredProducts(filtered)
-  }, [products, searchTerm, statusFilter])
+  }, [products, searchTerm, statusFilter, typeFilter, categoryFilter])
+
+  // 카테고리 목록 추출
+  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
 
   const fetchProducts = async () => {
     try {
@@ -122,6 +136,32 @@ export default function HomePage() {
 
   return (
     <div className="px-4 py-6">
+      {/* QR 코드 섹션 */}
+      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-blue-800 mb-1">📱 모바일로 접속하기</h3>
+            <p className="text-sm text-blue-600">QR 코드를 스캔하여 핸드폰에서 쉽게 접속하세요</p>
+          </div>
+          <button
+            onClick={() => setShowQR(!showQR)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {showQR ? 'QR 닫기' : 'QR 보기'}
+          </button>
+        </div>
+        {showQR && (
+          <div className="mt-4 text-center">
+            <img 
+              src="/carrot2_qrcode.png" 
+              alt="QR 코드"
+              className="mx-auto w-32 h-32 border-2 border-white rounded-lg shadow-md"
+            />
+            <p className="text-xs text-blue-600 mt-2">QR 코드를 스캔하면 바로 접속됩니다</p>
+          </div>
+        )}
+      </div>
+
       {/* 검색 및 필터 */}
       <div className="space-y-4 mb-6">
         {/* 검색바 */}
@@ -182,6 +222,63 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+
+        {/* 판매/나눔 타입 필터 */}
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <span className="text-gray-600 text-sm flex-shrink-0">타입:</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTypeFilter('all')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                typeFilter === 'all' 
+                  ? 'bg-purple-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              전체
+            </button>
+            <button
+              onClick={() => setTypeFilter('sale')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                typeFilter === 'sale' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              💰 판매
+            </button>
+            <button
+              onClick={() => setTypeFilter('share')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                typeFilter === 'share' 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              💝 나눔
+            </button>
+          </div>
+        </div>
+
+        {/* 카테고리 필터 */}
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <span className="text-gray-600 text-sm flex-shrink-0">카테고리:</span>
+          <div className="flex gap-2">
+            {categories.map(category => (
+              <button
+                key={category}
+                onClick={() => setCategoryFilter(category)}
+                className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                  categoryFilter === category 
+                    ? 'bg-orange-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {category === 'all' ? '전체' : category}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* 상품 목록 */}
@@ -230,16 +327,38 @@ export default function HomePage() {
                 {/* 상품 정보 */}
                 <div className="flex-1 p-4 flex flex-col justify-between">
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{product.title}</h3>
-                    <p className="text-lg font-bold text-blue-600 mb-2">{formatPrice(product.price)}원</p>
-                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
+                    <div className="flex items-start justify-between mb-1">
+                      <h3 className="font-semibold text-gray-900 line-clamp-1 flex-1">{product.title}</h3>
+                      <div className="flex gap-1 ml-2">
+                        {/* 판매/나눔 타입 배지 */}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          product.type === 'share' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {product.type === 'share' ? '💝 나눔' : '💰 판매'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* 가격 표시 */}
+                    <p className={`text-lg font-bold mb-1 ${
+                      product.type === 'share' ? 'text-green-600' : 'text-blue-600'
+                    }`}>
+                      {product.type === 'share' ? '나눔' : `${formatPrice(product.price)}원`}
+                    </p>
+
+                    {/* 카테고리 표시 */}
+                    <p className="text-xs text-gray-500 mb-2">📂 {product.category}</p>
+                    
+                    <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
                     <div className="flex items-center gap-2">
                       <span>{product.seller_name}</span>
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
                         <FiEye size={12} />
-                        {product.view_count || 0}
+                        <span className="font-medium">{product.view_count || 0}</span>
                       </span>
                     </div>
                     <span>{new Date(product.created_at).toLocaleDateString()}</span>

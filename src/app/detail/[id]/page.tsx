@@ -6,6 +6,7 @@ import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2, FiEye } fr
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Product, AuthState, ProductStatus } from '@/types'
+import { getProductById, updateProduct } from '@/lib/localData'
 
 export default function ProductDetailPage() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
@@ -16,6 +17,8 @@ export default function ProductDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus>('selling')
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showImageModal, setShowImageModal] = useState(false)
+  const [showShareRequestModal, setShowShareRequestModal] = useState(false)
+  const [shareRequestReason, setShareRequestReason] = useState('')
   const router = useRouter()
   const params = useParams()
 
@@ -36,18 +39,13 @@ export default function ProductDetailPage() {
 
   const fetchProduct = async (productId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single()
-
-      if (error) {
+      const productData = getProductById(productId)
+      
+      if (!productData) {
         setError('상품을 찾을 수 없습니다.')
-        console.error('Error fetching product:', error)
       } else {
-        setProduct(data)
-        setSelectedStatus(data.status)
+        setProduct(productData)
+        setSelectedStatus(productData.status)
         
         // 조회수 증가 (비동기로 실행하여 페이지 로딩 속도에 영향 주지 않음)
         incrementViewCount(productId)
@@ -62,12 +60,14 @@ export default function ProductDetailPage() {
 
   const incrementViewCount = async (productId: string) => {
     try {
-      const { error } = await supabase.rpc('increment_view_count', {
-        product_id: productId
-      })
-
-      if (error) {
-        console.error('Error incrementing view count:', error)
+      const currentProduct = getProductById(productId)
+      if (currentProduct) {
+        const updatedProduct = updateProduct(productId, {
+          view_count: (currentProduct.view_count || 0) + 1
+        })
+        if (updatedProduct) {
+          setProduct(updatedProduct)
+        }
       }
     } catch (error) {
       console.error('Error incrementing view count:', error)
@@ -162,6 +162,19 @@ export default function ProductDetailPage() {
     if (!confirmed) return
 
     await handleStatusChange('reserved')
+  }
+
+  const handleShareRequest = () => {
+    if (!shareRequestReason.trim()) {
+      alert('신청 사연을 작성해주세요.')
+      return
+    }
+
+    // 여기서 실제로는 서버에 나눔 신청을 저장해야 하지만, 
+    // 현재는 간단히 알림으로 처리
+    alert(`나눔 신청이 완료되었습니다!\n\n사연: ${shareRequestReason}\n\n판매자가 확인 후 연락드릴 예정입니다.`)
+    setShowShareRequestModal(false)
+    setShareRequestReason('')
   }
 
   if (auth.isLoading || isLoading) {
@@ -285,13 +298,33 @@ export default function ProductDetailPage() {
         {/* 상품 정보 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">{product.title}</h1>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
+              <div className="flex items-center gap-2">
+                {/* 판매/나눔 타입 배지 */}
+                <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                  product.type === 'share' 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {product.type === 'share' ? '💝 나눔' : '💰 판매'}
+                </span>
+                {/* 카테고리 배지 */}
+                <span className="px-2 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                  📂 {product.category}
+                </span>
+              </div>
+            </div>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(product.status)}`}>
               {getStatusText(product.status)}
             </span>
           </div>
           
-          <p className="text-3xl font-bold text-blue-600 mb-4">{formatPrice(product.price)}원</p>
+          <p className={`text-3xl font-bold mb-4 ${
+            product.type === 'share' ? 'text-green-600' : 'text-blue-600'
+          }`}>
+            {product.type === 'share' ? '나눔' : `${formatPrice(product.price)}원`}
+          </p>
           
           <div className="space-y-4">
             <div>
@@ -336,14 +369,34 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* 구매 버튼 */}
+        {/* 구매/나눔 신청 버튼 */}
         {!canManageProduct() && product.status === 'selling' && (
-          <button
-            onClick={handleReserveProduct}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            예약하기
-          </button>
+          <div className="space-y-3">
+            {product.type === 'sale' ? (
+              <button
+                onClick={handleReserveProduct}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                💰 예약하기
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowShareRequestModal(true)}
+                className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              >
+                💝 나눔 신청하기
+              </button>
+            )}
+            
+            {/* 나눔 안내 메시지 */}
+            {product.type === 'share' && (
+              <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                <p className="text-sm text-green-700">
+                  💡 나눔 신청 시 필요한 이유를 작성해주세요. 판매자가 가장 적절한 신청자를 선택합니다.
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* 상태 변경 모달 */}
@@ -440,6 +493,56 @@ export default function ProductDetailPage() {
               >
                 ✕
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 나눔 신청 모달 */}
+        {showShareRequestModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-green-700">💝 나눔 신청하기</h3>
+              
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>상품명:</strong> {product.title}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  이 물건이 필요한 이유를 구체적으로 작성해주세요. 
+                  판매자가 신청 사연을 보고 나눔 받을 분을 선택합니다.
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  신청 사연 *
+                </label>
+                <textarea
+                  value={shareRequestReason}
+                  onChange={(e) => setShareRequestReason(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="예: 새로 이사를 와서 조명이 없어 공부할 때 불편합니다. 정말 필요해서 신청합니다..."
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowShareRequestModal(false)
+                    setShareRequestReason('')
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleShareRequest}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                >
+                  신청하기
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -8,6 +8,20 @@ import { supabase } from '@/lib/supabase'
 import { AuthState } from '@/types'
 import { v4 as uuidv4 } from 'uuid'
 
+// 카테고리 목록
+const CATEGORIES = [
+  '휴대폰/태블릿',
+  '노트북/PC',
+  '모니터/주변기기',
+  '가구/인테리어',
+  '유아용품',
+  '의류/잡화',
+  '생활용품',
+  '스포츠/레저',
+  '도서/문구',
+  '기타'
+]
+
 export default function UploadPage() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
   const [isLoading, setIsLoading] = useState(false)
@@ -23,7 +37,9 @@ export default function UploadPage() {
     originalPrice: '',
     usagePeriod: '',
     contact: '',
-    sellerName: ''
+    sellerName: '',
+    type: 'sale', // 기본값은 판매
+    category: ''
   })
 
   // 이미지 상태
@@ -50,7 +66,7 @@ export default function UploadPage() {
     }
   }, [router])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -147,8 +163,15 @@ export default function UploadPage() {
       return
     }
 
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      setError('올바른 가격을 입력해주세요.')
+    if (!formData.category) {
+      setError('카테고리를 선택해주세요.')
+      setIsLoading(false)
+      return
+    }
+
+    // 판매의 경우에만 가격 유효성 검사
+    if (formData.type === 'sale' && (!formData.price || parseFloat(formData.price) <= 0)) {
+      setError('올바른 판매 가격을 입력해주세요.')
       setIsLoading(false)
       return
     }
@@ -175,14 +198,17 @@ export default function UploadPage() {
         .insert([{
           title: formData.title,
           description: formData.description,
-          price: parseFloat(formData.price),
-          original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
+          price: formData.type === 'share' ? 0 : parseFloat(formData.price),
+          original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
           usage_period: formData.usagePeriod,
           contact: formData.contact,
           seller_name: formData.sellerName,
           seller_id: auth.user?.id || 'admin',
           status: 'selling',
+          type: formData.type,
+          category: formData.category,
           images: imageUrls,
+          view_count: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }])
@@ -303,6 +329,62 @@ export default function UploadPage() {
             />
           </div>
 
+          {/* 판매/나눔 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              거래 유형 *
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="type"
+                  value="sale"
+                  checked={formData.type === 'sale'}
+                  onChange={handleInputChange}
+                  className="mr-2"
+                  disabled={isLoading}
+                />
+                <span className="text-sm">💰 판매</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="type"
+                  value="share"
+                  checked={formData.type === 'share'}
+                  onChange={handleInputChange}
+                  className="mr-2"
+                  disabled={isLoading}
+                />
+                <span className="text-sm">💝 나눔</span>
+              </label>
+            </div>
+          </div>
+
+          {/* 카테고리 선택 */}
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+              카테고리 *
+            </label>
+            <select
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={isLoading}
+              required
+            >
+              <option value="">카테고리를 선택하세요</option>
+              {CATEGORIES.map(category => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* 설명 */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
@@ -315,48 +397,74 @@ export default function UploadPage() {
               onChange={handleInputChange}
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="상품에 대한 자세한 설명을 입력하세요"
+              placeholder={formData.type === 'share' 
+                ? "나눔 물건에 대한 설명을 입력하세요" 
+                : "상품에 대한 자세한 설명을 입력하세요"
+              }
               disabled={isLoading}
               required
             />
           </div>
 
-          {/* 가격 */}
-          <div>
-            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-              판매 가격 (원) *
-            </label>
-            <input
-              type="number"
-              id="price"
-              name="price"
-              value={formData.price}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="0"
-              min="0"
-              disabled={isLoading}
-              required
-            />
-          </div>
+          {/* 가격 - 판매일 때만 표시 */}
+          {formData.type === 'sale' && (
+            <>
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
+                  판매 가격 (원) *
+                </label>
+                <input
+                  type="number"
+                  id="price"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0"
+                  min="0"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
 
-          {/* 구매시가격 */}
-          <div>
-            <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700 mb-2">
-              구매시 가격 (원)
-            </label>
-            <input
-              type="number"
-              id="originalPrice"
-              name="originalPrice"
-              value={formData.originalPrice}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="원래 구매했던 가격"
-              min="0"
-              disabled={isLoading}
-            />
-          </div>
+              <div>
+                <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700 mb-2">
+                  구매시 가격 (원)
+                </label>
+                <input
+                  type="number"
+                  id="originalPrice"
+                  name="originalPrice"
+                  value={formData.originalPrice}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="원래 구매했던 가격"
+                  min="0"
+                  disabled={isLoading}
+                />
+              </div>
+            </>
+          )}
+
+          {/* 나눔 안내 메시지 */}
+          {formData.type === 'share' && (
+            <div className="bg-green-50 border border-green-200 rounded-md p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <span className="text-green-400 text-xl">💝</span>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-green-800">
+                    나눔 물건입니다
+                  </h3>
+                  <p className="mt-1 text-sm text-green-700">
+                    다른 사람들이 이 물건이 필요한 이유를 작성할 수 있습니다. 
+                    가장 적절한 사연을 보고 나눔 받을 사람을 선택해주세요.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 사용 기간 */}
           <div>
