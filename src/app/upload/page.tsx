@@ -6,6 +6,7 @@ import { FiCamera, FiX, FiUpload } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { AuthState } from '@/types'
+import { addProduct } from '@/lib/localData'
 import { v4 as uuidv4 } from 'uuid'
 
 // 카테고리 목록
@@ -38,7 +39,7 @@ export default function UploadPage() {
     usagePeriod: '',
     contact: '',
     sellerName: '',
-    type: 'sale', // 기본값은 판매
+    type: 'sale' as 'sale' | 'share', // 기본값은 판매
     category: ''
   })
 
@@ -192,29 +193,25 @@ export default function UploadPage() {
       // 이미지 업로드
       const imageUrls = await uploadImages()
 
-      // 상품 데이터 삽입
-      const { error: insertError } = await supabase
-        .from('products')
-        .insert([{
-          title: formData.title,
-          description: formData.description,
-          price: formData.type === 'share' ? 0 : parseFloat(formData.price),
-          original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
-          usage_period: formData.usagePeriod,
-          contact: formData.contact,
-          seller_name: formData.sellerName,
-          seller_id: auth.user?.id || 'admin',
-          status: 'selling',
-          type: formData.type,
-          category: formData.category,
-          images: imageUrls,
-          view_count: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
+      // 상품 데이터 로컬 저장
+      const newProduct = addProduct({
+        title: formData.title,
+        description: formData.description,
+        price: formData.type === 'share' ? 0 : parseFloat(formData.price),
+        original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
+        usage_period: formData.usagePeriod,
+        contact: formData.contact,
+        seller_name: formData.sellerName,
+        seller_id: auth.user?.id || 'admin',
+        status: 'selling',
+        type: formData.type as 'sale' | 'share',
+        category: formData.category,
+        images: imageUrls,
+        view_count: 0
+      })
 
-      if (insertError) {
-        throw insertError
+      if (!newProduct) {
+        throw new Error('상품 등록에 실패했습니다.')
       }
 
       setSuccess('상품이 성공적으로 등록되었습니다!')

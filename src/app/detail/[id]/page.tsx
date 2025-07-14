@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2, FiEye } from 'react-icons/fi'
+import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2, FiEye, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Product, AuthState, ProductStatus } from '@/types'
@@ -177,6 +177,17 @@ export default function ProductDetailPage() {
     setShareRequestReason('')
   }
 
+  // 이미지 슬라이드 함수들
+  const goToPreviousImage = () => {
+    if (!product?.images || product.images.length <= 1) return
+    setCurrentImageIndex(prev => prev === 0 ? product.images.length - 1 : prev - 1)
+  }
+
+  const goToNextImage = () => {
+    if (!product?.images || product.images.length <= 1) return
+    setCurrentImageIndex(prev => prev === product.images.length - 1 ? 0 : prev + 1)
+  }
+
   if (auth.isLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -259,12 +270,46 @@ export default function ProductDetailPage() {
           {product.images && product.images.length > 0 ? (
             <div className="space-y-4">
               {/* 메인 이미지 */}
-              <div className="w-full h-80 bg-gray-100 rounded-lg overflow-hidden cursor-pointer" onClick={() => setShowImageModal(true)}>
+              <div className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
                 <img
                   src={product.images[currentImageIndex]}
                   alt={product.title}
-                  className="w-full h-full object-contain hover:scale-105 transition-transform"
+                  className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => setShowImageModal(true)}
                 />
+                
+                {/* 좌우 슬라이드 버튼 */}
+                {product.images.length > 1 && (
+                  <>
+                    <button
+                      onClick={goToPreviousImage}
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                    >
+                      <FiChevronLeft size={20} />
+                    </button>
+                    <button
+                      onClick={goToNextImage}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                    >
+                      <FiChevronRight size={20} />
+                    </button>
+                    
+                    {/* 이미지 인디케이터 */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                      {product.images.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentImageIndex(index)}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            index === currentImageIndex 
+                              ? 'bg-white' 
+                              : 'bg-white bg-opacity-50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               
               {/* 썸네일 이미지 */}
@@ -274,7 +319,7 @@ export default function ProductDetailPage() {
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden border-2 ${
+                      className={`flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                         index === currentImageIndex ? 'border-blue-600' : 'border-gray-200'
                       }`}
                     >

@@ -261,23 +261,19 @@ export default function HomePage() {
         </div>
 
         {/* 카테고리 필터 */}
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2">
           <span className="text-gray-600 text-sm flex-shrink-0">카테고리:</span>
-          <div className="flex gap-2">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white min-w-32"
+          >
             {categories.map(category => (
-              <button
-                key={category}
-                onClick={() => setCategoryFilter(category)}
-                className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
-                  categoryFilter === category 
-                    ? 'bg-orange-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {category === 'all' ? '전체' : category}
-              </button>
+              <option key={category} value={category}>
+                {category === 'all' ? '전체 카테고리' : category}
+              </option>
             ))}
-          </div>
+          </select>
         </div>
       </div>
 
