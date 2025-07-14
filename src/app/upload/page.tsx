@@ -25,6 +25,7 @@ const CATEGORIES = [
 export default function UploadPage() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
   const [isLoading, setIsLoading] = useState(false)
+  // const [loadingMessage, setLoadingMessage] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const router = useRouter()
@@ -147,52 +148,77 @@ export default function UploadPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    // setLoadingMessage('상품 정보를 확인하고 있습니다...')
     setError('')
     setSuccess('')
 
-    // 유효성 검사
+    // 강화된 유효성 검사
+    const validationErrors: string[] = []
+    
     if (!formData.title.trim()) {
-      setError('제목을 입력해주세요.')
-      setIsLoading(false)
-      return
+      validationErrors.push('제목을 입력해주세요.')
+    } else if (formData.title.trim().length < 2) {
+      validationErrors.push('제목은 2글자 이상 입력해주세요.')
+    } else if (formData.title.trim().length > 100) {
+      validationErrors.push('제목은 100글자 이하로 입력해주세요.')
     }
 
     if (!formData.description.trim()) {
-      setError('설명을 입력해주세요.')
-      setIsLoading(false)
-      return
+      validationErrors.push('설명을 입력해주세요.')
+    } else if (formData.description.trim().length < 10) {
+      validationErrors.push('설명은 10글자 이상 입력해주세요.')
     }
 
     if (!formData.category) {
-      setError('카테고리를 선택해주세요.')
-      setIsLoading(false)
-      return
+      validationErrors.push('카테고리를 선택해주세요.')
     }
 
     // 판매의 경우에만 가격 유효성 검사
-    if (formData.type === 'sale' && (!formData.price || parseFloat(formData.price) <= 0)) {
-      setError('올바른 판매 가격을 입력해주세요.')
-      setIsLoading(false)
-      return
+    if (formData.type === 'sale') {
+      if (!formData.price || parseFloat(formData.price) <= 0) {
+        validationErrors.push('올바른 판매 가격을 입력해주세요.')
+      } else if (parseFloat(formData.price) > 100000000) {
+        validationErrors.push('판매 가격이 너무 높습니다.')
+      }
+      
+      if (formData.originalPrice && parseFloat(formData.originalPrice) < parseFloat(formData.price)) {
+        validationErrors.push('원가는 판매가보다 높아야 합니다.')
+      }
     }
 
     if (!formData.contact.trim()) {
-      setError('연락처를 입력해주세요.')
-      setIsLoading(false)
-      return
+      validationErrors.push('연락처를 입력해주세요.')
+    } else {
+      const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/
+      if (!phoneRegex.test(formData.contact.trim())) {
+        validationErrors.push('올바른 전화번호 형식을 입력해주세요. (예: 010-1234-5678)')
+      }
     }
 
     if (!formData.sellerName.trim()) {
-      setError('판매자 이름을 입력해주세요.')
+      validationErrors.push('판매자 이름을 입력해주세요.')
+    } else if (formData.sellerName.trim().length < 2) {
+      validationErrors.push('판매자 이름은 2글자 이상 입력해주세요.')
+    }
+
+    // 이미지 검증
+    if (selectedImages.length === 0) {
+      validationErrors.push('최소 1개 이상의 상품 이미지를 업로드해주세요.')
+    }
+
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(' '))
       setIsLoading(false)
       return
     }
 
     try {
       // 이미지 업로드
+      // setLoadingMessage('이미지를 업로드하고 있습니다...')
       const imageUrls = await uploadImages()
 
       // seller_id 검증 및 설정
+      // setLoadingMessage('사용자 인증을 확인하고 있습니다...')
       let sellerId: string
       if (auth.isAdmin) {
         // 관리자인 경우 admin 사용자 생성 또는 확인
@@ -244,6 +270,7 @@ export default function UploadPage() {
       }
 
       // 상품 데이터 Supabase에 저장
+      // setLoadingMessage('상품 정보를 저장하고 있습니다...')
       const { error } = await supabase
         .from('products')
         .insert([{
@@ -267,7 +294,22 @@ export default function UploadPage() {
         throw error
       }
 
-      setSuccess('상품이 성공적으로 등록되었습니다!')
+      setSuccess(`상품 "${formData.title}"이(가) 성공적으로 등록되었습니다! 곧 홈 화면으로 이동합니다.`)
+      
+      // 폼 초기화
+      setFormData({
+        title: '',
+        description: '',
+        price: '',
+        originalPrice: '',
+        usagePeriod: '',
+        contact: auth.user?.phone || '',
+        sellerName: auth.user?.name || '',
+        type: 'sale',
+        category: ''
+      })
+      setSelectedImages([])
+      setPreviewUrls([])
       
       // 3초 후 홈으로 리다이렉트
       setTimeout(() => {

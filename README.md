@@ -79,18 +79,27 @@ CREATE TABLE users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 상품 테이블
+-- 상품 테이블 (완전한 스키마)
 CREATE TABLE products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title VARCHAR(200) NOT NULL,
   description TEXT NOT NULL,
   price DECIMAL(10,2) NOT NULL,
+  original_price DECIMAL(10,2), -- 원가
   usage_period VARCHAR(100),
   contact VARCHAR(50) NOT NULL,
   seller_name VARCHAR(100) NOT NULL,
   seller_id UUID REFERENCES users(id),
   status VARCHAR(20) DEFAULT 'selling' CHECK (status IN ('selling', 'reserved', 'sold')),
+  type VARCHAR(10) DEFAULT 'sale' CHECK (type IN ('sale', 'share')), -- 판매/나눔 구분
+  category VARCHAR(100), -- 카테고리
   images TEXT[],
+  view_count INTEGER DEFAULT 0, -- 조회수
+  -- 예약자 정보
+  reserved_by_id UUID,
+  reserved_by_name VARCHAR(100),
+  reserved_by_phone VARCHAR(20),
+  reserved_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -99,6 +108,11 @@ CREATE TABLE products (
 CREATE INDEX idx_products_status ON products(status);
 CREATE INDEX idx_products_seller_id ON products(seller_id);
 CREATE INDEX idx_products_created_at ON products(created_at);
+CREATE INDEX idx_products_type ON products(type);
+CREATE INDEX idx_products_category ON products(category);
+
+-- 관리자 사용자 생성
+INSERT INTO users (name, phone) VALUES ('관리자', 'admin');
 ```
 
 ### 4. Storage 버킷 생성
