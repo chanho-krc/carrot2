@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "경기지역본부 아.나.바.다.",
-  description: "경기지역본부 직원들을 위한 중고거래 플랫폼",
+  description: "경기지역본부 직원들을 위한 중고거래 플랫폼 - 재배포",
 };
 
 export default function RootLayout({
