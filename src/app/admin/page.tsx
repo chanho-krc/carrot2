@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FiUsers, FiPackage, FiBarChart, FiEye, FiEdit3, FiTrash2, FiUser, FiCalendar } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
 import { Product, User, AuthState, ProductStatus } from '@/types'
+import { supabase } from '@/lib/supabase'
 
 export default function AdminDashboard() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
         .from('products')
         .select('*')
         .order('created_at', { ascending: false })
-
+      
       if (productsError) {
         throw productsError
       }

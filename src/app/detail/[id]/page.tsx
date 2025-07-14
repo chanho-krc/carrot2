@@ -6,7 +6,6 @@ import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2, FiEye, FiC
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Product, AuthState, ProductStatus } from '@/types'
-import { getProductById, updateProduct } from '@/lib/localData'
 
 export default function ProductDetailPage() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
@@ -39,9 +38,13 @@ export default function ProductDetailPage() {
 
   const fetchProduct = async (productId: string) => {
     try {
-      const productData = getProductById(productId)
+      const { data: productData, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single()
       
-      if (!productData) {
+      if (error || !productData) {
         setError('상품을 찾을 수 없습니다.')
       } else {
         setProduct(productData)
@@ -60,14 +63,29 @@ export default function ProductDetailPage() {
 
   const incrementViewCount = async (productId: string) => {
     try {
-      const currentProduct = getProductById(productId)
-      if (currentProduct) {
-        const updatedProduct = updateProduct(productId, {
-          view_count: (currentProduct.view_count || 0) + 1
+      // 현재 상품 정보 가져오기
+      const { data: currentProduct, error: fetchError } = await supabase
+        .from('products')
+        .select('view_count')
+        .eq('id', productId)
+        .single()
+
+      if (fetchError) {
+        console.error('Error fetching product for view count:', fetchError)
+        return
+      }
+
+      // 조회수 1 증가
+      const { error } = await supabase
+        .from('products')
+        .update({ 
+          view_count: (currentProduct.view_count || 0) + 1,
+          updated_at: new Date().toISOString()
         })
-        if (updatedProduct) {
-          setProduct(updatedProduct)
-        }
+        .eq('id', productId)
+
+      if (error) {
+        console.error('Error incrementing view count:', error)
       }
     } catch (error) {
       console.error('Error incrementing view count:', error)
@@ -161,19 +179,35 @@ export default function ProductDetailPage() {
     const confirmed = window.confirm('이 상품을 예약하시겠습니까?')
     if (!confirmed) return
 
-    // 예약자 정보와 함께 상태 변경
-    const updatedProduct = updateProduct(product.id, {
-      status: 'reserved',
-      reserved_by_id: auth.user.id,
-      reserved_by_name: auth.user.name,
-      reserved_by_phone: auth.user.phone,
-      reserved_at: new Date().toISOString()
-    })
+    try {
+      // 예약자 정보와 함께 상태 변경
+      const { error } = await supabase
+        .from('products')
+        .update({
+          status: 'reserved',
+          reserved_by_id: auth.user.id,
+          reserved_by_name: auth.user.name,
+          reserved_by_phone: auth.user.phone,
+          reserved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', product.id)
 
-    if (updatedProduct) {
-      setProduct(updatedProduct)
+      if (error) {
+        throw error
+      }
+
+      setProduct({
+        ...product,
+        status: 'reserved',
+        reserved_by_id: auth.user.id,
+        reserved_by_name: auth.user.name,
+        reserved_by_phone: auth.user.phone,
+        reserved_at: new Date().toISOString()
+      })
       alert('예약이 완료되었습니다!')
-    } else {
+    } catch (error) {
+      console.error('Error reserving product:', error)
       alert('예약 처리 중 오류가 발생했습니다.')
     }
   }

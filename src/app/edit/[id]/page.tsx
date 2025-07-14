@@ -6,7 +6,6 @@ import { FiArrowLeft, FiCamera, FiX, FiUpload } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { AuthState, Product } from '@/types'
-import { getProductById, updateProduct } from '@/lib/localData'
 import { v4 as uuidv4 } from 'uuid'
 
 // 카테고리 목록
@@ -67,9 +66,13 @@ export default function EditProductPage() {
 
   const fetchProduct = async (productId: string) => {
     try {
-      const data = getProductById(productId)
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single()
 
-      if (!data) {
+      if (error || !data) {
         setError('상품을 찾을 수 없습니다.')
         return
       }
@@ -225,21 +228,25 @@ export default function EditProductPage() {
       const allImages = [...existingImages, ...newImageUrls]
 
       // 상품 데이터 업데이트
-      const updatedProduct = updateProduct(product.id, {
-        title: formData.title,
-        description: formData.description,
-        price: formData.type === 'share' ? 0 : parseFloat(formData.price),
-        original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
-        usage_period: formData.usagePeriod,
-        contact: formData.contact,
-        seller_name: formData.sellerName,
-        type: formData.type,
-        category: formData.category,
-        images: allImages
-      })
+      const { error } = await supabase
+        .from('products')
+        .update({
+          title: formData.title,
+          description: formData.description,
+          price: formData.type === 'share' ? 0 : parseFloat(formData.price),
+          original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
+          usage_period: formData.usagePeriod,
+          contact: formData.contact,
+          seller_name: formData.sellerName,
+          type: formData.type,
+          category: formData.category,
+          images: allImages,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', product.id)
 
-      if (!updatedProduct) {
-        throw new Error('상품 업데이트에 실패했습니다.')
+      if (error) {
+        throw error
       }
 
       setSuccess('상품이 성공적으로 수정되었습니다!')

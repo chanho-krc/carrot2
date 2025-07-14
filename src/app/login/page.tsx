@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { loginUser, loginAdmin, getAuthFromStorage } from '@/lib/auth'
-import { isSupabaseConfigured } from '@/lib/supabase'
-import SupabaseSetup from '@/components/SupabaseSetup'
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<'user' | 'admin'>('user')
@@ -21,11 +19,6 @@ export default function LoginPage() {
   const [adminPassword, setAdminPassword] = useState('')
 
   useEffect(() => {
-    // Supabase 설정 확인
-    if (!isSupabaseConfigured()) {
-      return
-    }
-
     // 이미 로그인된 경우 홈으로 리다이렉트
     const auth = getAuthFromStorage()
     if (auth.user || auth.isAdmin) {
@@ -86,11 +79,6 @@ export default function LoginPage() {
       setError('아이디 또는 비밀번호가 잘못되었습니다.')
     }
     setIsLoading(false)
-  }
-
-  // Supabase가 설정되지 않은 경우
-  if (!isSupabaseConfigured()) {
-    return <SupabaseSetup />
   }
 
   return (
