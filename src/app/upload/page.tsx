@@ -152,62 +152,40 @@ export default function UploadPage() {
     setError('')
     setSuccess('')
 
-    // 강화된 유효성 검사
-    const validationErrors: string[] = []
-    
+    // 간소화된 유효성 검사
     if (!formData.title.trim()) {
-      validationErrors.push('제목을 입력해주세요.')
-    } else if (formData.title.trim().length < 2) {
-      validationErrors.push('제목은 2글자 이상 입력해주세요.')
-    } else if (formData.title.trim().length > 100) {
-      validationErrors.push('제목은 100글자 이하로 입력해주세요.')
+      setError('제목을 입력해주세요.')
+      setIsLoading(false)
+      return
     }
 
     if (!formData.description.trim()) {
-      validationErrors.push('설명을 입력해주세요.')
-    } else if (formData.description.trim().length < 10) {
-      validationErrors.push('설명은 10글자 이상 입력해주세요.')
+      setError('설명을 입력해주세요.')
+      setIsLoading(false)
+      return
     }
 
     if (!formData.category) {
-      validationErrors.push('카테고리를 선택해주세요.')
+      setError('카테고리를 선택해주세요.')
+      setIsLoading(false)
+      return
     }
 
     // 판매의 경우에만 가격 유효성 검사
-    if (formData.type === 'sale') {
-      if (!formData.price || parseFloat(formData.price) <= 0) {
-        validationErrors.push('올바른 판매 가격을 입력해주세요.')
-      } else if (parseFloat(formData.price) > 100000000) {
-        validationErrors.push('판매 가격이 너무 높습니다.')
-      }
-      
-      if (formData.originalPrice && parseFloat(formData.originalPrice) < parseFloat(formData.price)) {
-        validationErrors.push('원가는 판매가보다 높아야 합니다.')
-      }
+    if (formData.type === 'sale' && (!formData.price || parseFloat(formData.price) <= 0)) {
+      setError('판매 가격을 입력해주세요.')
+      setIsLoading(false)
+      return
     }
 
     if (!formData.contact.trim()) {
-      validationErrors.push('연락처를 입력해주세요.')
-    } else {
-      const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/
-      if (!phoneRegex.test(formData.contact.trim())) {
-        validationErrors.push('올바른 전화번호 형식을 입력해주세요. (예: 010-1234-5678)')
-      }
+      setError('연락처를 입력해주세요.')
+      setIsLoading(false)
+      return
     }
 
     if (!formData.sellerName.trim()) {
-      validationErrors.push('판매자 이름을 입력해주세요.')
-    } else if (formData.sellerName.trim().length < 2) {
-      validationErrors.push('판매자 이름은 2글자 이상 입력해주세요.')
-    }
-
-    // 이미지 검증
-    if (selectedImages.length === 0) {
-      validationErrors.push('최소 1개 이상의 상품 이미지를 업로드해주세요.')
-    }
-
-    if (validationErrors.length > 0) {
-      setError(validationErrors.join(' '))
+      setError('판매자 이름을 입력해주세요.')
       setIsLoading(false)
       return
     }

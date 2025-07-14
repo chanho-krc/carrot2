@@ -88,6 +88,7 @@ export default function AdminDashboard() {
       
       setShowStatusModal(false)
       setSelectedProduct(null)
+      alert(`"${product.title}" 상품 상태가 "${getStatusText(newStatus)}"로 변경되었습니다.`)
     } catch (error) {
       setError('상태 변경 중 오류가 발생했습니다.')
       console.error('Error updating product status:', error)
@@ -95,10 +96,11 @@ export default function AdminDashboard() {
   }
 
   const handleDeleteProduct = async (product: Product) => {
-    const confirmed = window.confirm('정말로 이 상품을 삭제하시겠습니까?')
+    const confirmed = window.confirm(`정말로 "${product.title}" 상품을 삭제하시겠습니까?\n삭제된 상품은 복구할 수 없습니다.`)
     if (!confirmed) return
 
     try {
+      setIsLoading(true)
       const { error } = await supabase
         .from('products')
         .delete()
@@ -112,9 +114,13 @@ export default function AdminDashboard() {
       setProducts(prevProducts =>
         prevProducts.filter(p => p.id !== product.id)
       )
+      
+      alert(`"${product.title}" 상품이 성공적으로 삭제되었습니다.`)
     } catch (error) {
       setError('상품 삭제 중 오류가 발생했습니다.')
       console.error('Error deleting product:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 

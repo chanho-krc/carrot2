@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2, FiEye, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
@@ -34,9 +34,9 @@ export default function ProductDetailPage() {
     if (params.id) {
       fetchProduct(params.id as string)
     }
-  }, [router, params.id])
+  }, [router, params.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchProduct = async (productId: string) => {
+  const fetchProduct = useCallback(async (productId: string) => {
     try {
       const { data: productData, error } = await supabase
         .from('products')
@@ -59,7 +59,7 @@ export default function ProductDetailPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   const incrementViewCount = async (productId: string) => {
     try {
@@ -110,19 +110,23 @@ export default function ProductDetailPage() {
 
       setProduct({ ...product, status: newStatus })
       setShowStatusModal(false)
+      alert(`상품 상태가 "${getStatusText(newStatus)}"로 변경되었습니다.`)
     } catch (error) {
       setError('상태 변경 중 오류가 발생했습니다.')
       console.error('Error updating product status:', error)
     }
   }
 
+
+
   const handleDeleteProduct = async () => {
     if (!product) return
 
-    const confirmed = window.confirm('정말로 이 상품을 삭제하시겠습니까?')
+    const confirmed = window.confirm(`정말로 "${product.title}" 상품을 삭제하시겠습니까?\n삭제된 상품은 복구할 수 없습니다.`)
     if (!confirmed) return
 
     try {
+      setIsLoading(true)
       const { error } = await supabase
         .from('products')
         .delete()
@@ -132,10 +136,13 @@ export default function ProductDetailPage() {
         throw error
       }
 
+      alert('상품이 성공적으로 삭제되었습니다.')
       router.push('/')
     } catch (error) {
       setError('상품 삭제 중 오류가 발생했습니다.')
       console.error('Error deleting product:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
