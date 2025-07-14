@@ -36,7 +36,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-xl font-bold text-gray-800">
-              사내 중고마켓
+              경기지역본부 아.나.바.다.
             </Link>
             {isAuthenticated && (
               <div className="flex items-center gap-3">

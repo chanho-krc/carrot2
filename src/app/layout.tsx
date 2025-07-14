@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "사내 중고마켓",
-  description: "사내 직원들을 위한 중고거래 플랫폼",
+  title: "경기지역본부 아.나.바.다.",
+  description: "경기지역본부 직원들을 위한 중고거래 플랫폼",
 };
 
 export default function RootLayout({

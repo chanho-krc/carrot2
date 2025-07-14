@@ -235,7 +235,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            사내 중고마켓
+            경기지역본부 아.나.바.다.
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             로그인하여 중고거래를 시작하세요
