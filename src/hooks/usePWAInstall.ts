@@ -20,7 +20,7 @@ export const usePWAInstall = () => {
       if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
         setIsInstalled(true)
       } else if (window.navigator && 'standalone' in window.navigator) {
-        setIsInstalled((window.navigator as any).standalone === true)
+        setIsInstalled((window.navigator as { standalone?: boolean }).standalone === true)
       }
     }
 
