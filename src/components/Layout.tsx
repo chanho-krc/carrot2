@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { FiHome, FiPlus, FiUser, FiSettings, FiLogOut } from 'react-icons/fi'
 import { getAuthFromStorage, logout } from '@/lib/auth'
 import { AuthState } from '@/types'
+import PWAInstallPrompt from './PWAInstallPrompt'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -36,7 +37,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-xl font-bold text-gray-800">
-              경기지역본부 아.나.바.다.
+              🥕 사내당근
             </Link>
             {isAuthenticated && (
               <div className="flex items-center gap-3">
@@ -119,6 +120,9 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </nav>
       )}
+
+      {/* PWA 설치 프롬프트 - 인증된 사용자에게만 표시 */}
+      {isAuthenticated && <PWAInstallPrompt />}
     </div>
   )
 } 
