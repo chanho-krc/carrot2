@@ -1,7 +1,7 @@
 {
-  "name": "사내당근 - Carrot2",
-  "short_name": "Carrot2",
-  "description": "회사 내부 중고거래 마켓플레이스",
+  "name": "KRC 당근",
+  "short_name": "KRC 당근",
+  "description": "KRC 내부 중고거래 마켓플레이스",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

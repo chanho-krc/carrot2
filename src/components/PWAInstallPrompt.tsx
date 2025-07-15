@@ -61,7 +61,7 @@ export default function PWAInstallPrompt() {
                 <span className="text-2xl">🥕</span>
               </div>
               <div>
-                <h2 className="text-white font-bold text-lg">사내당근</h2>
+                <h2 className="text-white font-bold text-lg">KRC 당근</h2>
                 <p className="text-orange-100 text-sm">앱으로 더 편리하게</p>
               </div>
             </div>
@@ -86,7 +86,7 @@ export default function PWAInstallPrompt() {
             </h3>
             
             <p className="text-gray-600 text-sm leading-relaxed">
-              사내당근을 홈 화면에 추가하면 앱처럼 빠르고 편리하게 사용할 수 있습니다.
+              KRC 당근을 홈 화면에 추가하면 앱처럼 빠르고 편리하게 사용할 수 있습니다.
             </p>
           </div>
 

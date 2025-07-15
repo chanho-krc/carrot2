@@ -108,7 +108,7 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('push', (event) => {
   console.log('Push event received');
   
-  const title = '사내당근';
+  const title = 'KRC 당근';
   const options = {
     body: event.data ? event.data.text() : '새로운 소식이 있습니다!',
     icon: '/icons/icon-192x192.png',

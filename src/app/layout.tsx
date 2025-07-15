@@ -14,15 +14,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "사내당근 - Carrot2",
-  description: "회사 내부 중고거래 마켓플레이스",
+  title: "KRC 당근",
+  description: "KRC 내부 중고거래 마켓플레이스",
   manifest: '/manifest.json',
   themeColor: '#2563eb',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: '사내당근',
+    title: 'KRC 당근',
   },
   icons: {
     icon: [
@@ -49,7 +49,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="사내당근" />
+        <meta name="apple-mobile-web-app-title" content="KRC 당근" />
         <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />

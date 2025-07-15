@@ -37,7 +37,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-xl font-bold text-gray-800">
-              🥕 사내당근
+              🥕 KRC 당근
             </Link>
             {isAuthenticated && (
               <div className="flex items-center gap-3">
