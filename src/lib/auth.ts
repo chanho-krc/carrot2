@@ -4,10 +4,11 @@ import { supabase } from './supabase'
 // 로컬 스토리지 키
 const AUTH_STORAGE_KEY = 'carrot2-auth'
 
-// 관리자 계정 정보
+// 관리자 계정 정보 (보안 강화됨)
+// 주의: 실제 운영 환경에서는 백엔드 API를 통한 인증을 권장
 const ADMIN_CREDENTIALS = {
-  id: 'admin',
-  password: 'admin123'
+  id: 'carrot2_admin',
+  password: 'carrot2_secure_admin_2024!@#'
 }
 
 // 로컬 스토리지에서 인증 정보 가져오기

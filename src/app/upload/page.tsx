@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { FiArrowLeft, FiUpload, FiX, FiCamera } from 'react-icons/fi'
+import { FiArrowLeft, FiX, FiCamera } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { AuthState, ProductType } from '@/types'
@@ -51,14 +51,26 @@ export default function UploadPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    
-    if (images.length + files.length > 5) {
-      setError('이미지는 최대 5개까지 업로드할 수 있습니다.')
+    if (files.length === 0) return
+
+    // 파일 개수 제한
+    const totalFiles = images.length + files.length
+    if (totalFiles > 5) {
+      setError('이미지는 최대 5장까지 업로드 가능합니다.')
       return
     }
 
+    // 파일 크기 체크 (5MB)
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('이미지 크기는 5MB 이하로 업로드해주세요.')
+        return
+      }
+    }
+
     setImages(prev => [...prev, ...files])
-    
+
+    // 미리보기 생성
     files.forEach(file => {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -73,95 +85,131 @@ export default function UploadPage() {
     setImagePreviews(prev => prev.filter((_, i) => i !== index))
   }
 
-  const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-    const filePath = `products/${fileName}`
+  const uploadImages = async () => {
+    const uploadedUrls: string[] = []
+    
+    for (const image of images) {
+      try {
+        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${image.name.split('.').pop()}`
+        const filePath = `products/${fileName}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, image)
 
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, file)
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError)
+          // 스토리지 에러 발생 시 빈 배열 반환 (상품 등록은 계속 진행)
+          break
+        }
 
-    if (error) {
-      throw error
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath)
+
+        uploadedUrls.push(publicUrl)
+      } catch (error) {
+        console.error('Image upload error:', error)
+        // 개별 이미지 업로드 실패 시 해당 이미지만 스킵
+        continue
+      }
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(data.path)
-
-    return publicUrl
+    return uploadedUrls
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setIsLoading(true)
+    setError('')
 
     try {
+      // 필수 필드 검증
       if (!formData.title.trim()) {
-        throw new Error('제목을 입력해주세요.')
+        throw new Error('상품명을 입력해주세요.')
       }
-
       if (!formData.description.trim()) {
-        throw new Error('설명을 입력해주세요.')
+        throw new Error('상품 설명을 입력해주세요.')
       }
-
-      if (formData.type === 'sale' && (!formData.price || parseFloat(formData.price) < 0)) {
-        throw new Error('올바른 가격을 입력해주세요.')
-      }
-
-      if (formData.type === 'wanted' && (!formData.price || parseFloat(formData.price) < 0)) {
-        throw new Error('희망 가격을 입력해주세요.')
-      }
-
       if (!formData.category) {
         throw new Error('카테고리를 선택해주세요.')
       }
 
-      // 이미지 업로드
-      const imageUrls: string[] = []
-      for (const image of images) {
-        try {
-          const url = await uploadImage(image)
-          imageUrls.push(url)
-        } catch (uploadError) {
-          console.error('Image upload error:', uploadError)
-          // 이미지 업로드 실패 시에도 계속 진행
+      // 가격 검증 (나눔은 제외)
+      if (formData.type !== 'share') {
+        if (!formData.price || parseFloat(formData.price) < 0) {
+          throw new Error('가격을 올바르게 입력해주세요.')
         }
       }
 
-      // 상품 데이터 생성
-      const productData = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        price: formData.type === 'share' ? 0 : parseFloat(formData.price),
-        original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
-        usage_period: formData.usagePeriod.trim(),
-        category: formData.category,
-        type: formData.type,
-        contact: auth.user?.phone || '',
-        seller_name: auth.user?.name || '',
-        seller_id: auth.user?.id || '',
-        status: 'selling',
-        images: imageUrls,
-        view_count: 0
+      // 이미지 권장 메시지 (필수에서 권장으로 완화)
+      if (formData.type === 'sale' && images.length === 0) {
+        const confirm = window.confirm('판매 상품은 이미지가 있으면 더 좋습니다.\n이미지 없이 등록하시겠습니까?')
+        if (!confirm) {
+          setIsLoading(false)
+          return
+        }
       }
 
-      const { error } = await supabase
+      // 로그인 상태 재확인
+      const currentAuth = getAuthFromStorage()
+      if (!currentAuth.user && !currentAuth.isAdmin) {
+        throw new Error('로그인이 필요합니다.')
+      }
+
+      let imageUrls: string[] = []
+      let imageUploadWarning = ''
+      
+      if (images.length > 0) {
+        try {
+          imageUrls = await uploadImages()
+          // 이미지 업로드가 부분적으로 실패한 경우
+          if (imageUrls.length < images.length) {
+            imageUploadWarning = `${images.length}장 중 ${imageUrls.length}장의 이미지만 업로드되었습니다.`
+          }
+        } catch (error) {
+          console.error('이미지 업로드 실패:', error)
+          imageUploadWarning = '이미지 업로드에 실패했지만 상품은 등록됩니다.'
+        }
+      }
+
+      // 가격 설정 (나눔은 0, 나머지는 입력값)
+      const finalPrice = formData.type === 'share' ? 0 : parseFloat(formData.price)
+
+      // Supabase에 상품 데이터 삽입
+      const { error: insertError } = await supabase
         .from('products')
-        .insert([productData])
+        .insert({
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          price: finalPrice,
+          original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
+          usage_period: formData.usagePeriod.trim() || null,
+          category: formData.category,
+          type: formData.type,
+          images: imageUrls,
+          contact: currentAuth.user?.phone || 'admin',
+          seller_name: currentAuth.user?.name || '관리자',
+          seller_id: currentAuth.user?.id || null,
+          status: 'selling',
+          view_count: 0
+        })
 
-      if (error) {
-        throw error
+      if (insertError) {
+        throw new Error(`등록 실패: ${insertError.message}`)
       }
 
+      // 성공 메시지
       const actionText = formData.type === 'sale' ? '판매' : formData.type === 'share' ? '나눔' : '구하기'
-      alert(`${actionText} 상품이 성공적으로 등록되었습니다!`)
+      const successMessage = imageUploadWarning 
+        ? `${actionText} 상품이 등록되었습니다!\n${imageUploadWarning}`
+        : `${actionText} 상품이 성공적으로 등록되었습니다!`
+      
+      alert(successMessage)
       router.push('/')
 
-    } catch (error: any) {
-      setError(error.message || '상품 등록 중 오류가 발생했습니다.')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '상품 등록 중 오류가 발생했습니다.')
       console.error('Upload error:', error)
     } finally {
       setIsLoading(false)
@@ -170,241 +218,68 @@ export default function UploadPage() {
 
   if (auth.isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
+      </div>
+    )
+  }
+
+  if (!auth.user && !auth.isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">로그인이 필요합니다</h1>
+          <button 
+            onClick={() => router.push('/login')}
+            className="bg-orange-500 text-white px-6 py-2 rounded-lg"
+          >
+            로그인하러 가기
+          </button>
         </div>
       </div>
     )
   }
 
-  const getPriceLabel = () => {
-    switch (formData.type) {
-      case 'sale':
-        return '판매 가격'
-      case 'wanted':
-        return '희망 가격'
-      default:
-        return '가격'
-    }
-  }
-
-  const getSubmitButtonText = () => {
-    switch (formData.type) {
-      case 'sale':
-        return '판매 상품 등록'
-      case 'share':
-        return '나눔 상품 등록'
-      case 'wanted':
-        return '구하기 등록'
-      default:
-        return '등록하기'
-    }
-  }
-
-  const getDescriptionPlaceholder = () => {
-    switch (formData.type) {
-      case 'sale':
-        return '판매하실 상품에 대해 자세히 설명해주세요...'
-      case 'share':
-        return '나눔하실 상품에 대해 자세히 설명해주세요...'
-      case 'wanted':
-        return '구하고 싶은 상품에 대해 자세히 설명해주세요. (브랜드, 모델, 상태 등)'
-      default:
-        return '상품에 대해 설명해주세요...'
-    }
-  }
-
   return (
-    <div className="px-4 py-6">
-      <div className="max-w-2xl mx-auto">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between mb-6">
-          <button
+    <div className="min-h-screen bg-gray-50">
+      {/* 헤더 */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-md mx-auto px-4 py-4 flex items-center">
+          <button 
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+            className="p-2 hover:bg-gray-100 rounded-full"
           >
-            <FiArrowLeft size={20} />
-            뒤로가기
+            <FiArrowLeft size={24} />
           </button>
-          <h1 className="text-xl font-bold text-gray-900">상품 등록</h1>
-          <div></div>
+          <h1 className="ml-4 text-xl font-semibold">상품 등록</h1>
         </div>
+      </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <div className="text-sm text-red-700">{error}</div>
-          </div>
-        )}
-
+      {/* 메인 컨텐츠 */}
+      <div className="max-w-md mx-auto p-4">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 타입 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">거래 유형</label>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => handleTypeChange('sale')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  formData.type === 'sale'
-                    ? 'bg-blue-50 border-blue-300 text-blue-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <div className="text-center">
-                  <div className="text-2xl mb-2">💰</div>
-                  <div className="font-medium">판매</div>
-                  <div className="text-xs text-gray-500">유료 거래</div>
-                </div>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleTypeChange('share')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  formData.type === 'share'
-                    ? 'bg-green-50 border-green-300 text-green-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <div className="text-center">
-                  <div className="text-2xl mb-2">💝</div>
-                  <div className="font-medium">나눔</div>
-                  <div className="text-xs text-gray-500">무료 나눔</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTypeChange('wanted')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  formData.type === 'wanted'
-                    ? 'bg-purple-50 border-purple-300 text-purple-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <div className="text-center">
-                  <div className="text-2xl mb-2">🔍</div>
-                  <div className="font-medium">구하기</div>
-                  <div className="text-xs text-gray-500">구매 희망</div>
-                </div>
-              </button>
+          {/* 에러 메시지 */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+              {error}
             </div>
-          </div>
+          )}
 
-          {/* 제목 */}
+          {/* 이미지 업로드 - 맨 위로 이동 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {formData.type === 'wanted' ? '구하고 싶은 상품명' : '상품명'}
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder={formData.type === 'wanted' ? '예: 아이폰 14 Pro 256GB' : '상품명을 입력하세요'}
-            />
-          </div>
-
-          {/* 설명 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">상세 설명</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder={getDescriptionPlaceholder()}
-            />
-          </div>
-
-          {/* 가격 */}
-          {formData.type !== 'share' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{getPriceLabel()}</label>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder={formData.type === 'wanted' ? '희망하는 가격을 입력하세요' : '가격을 입력하세요'}
-              />
-            </div>
-          )}
-
-          {/* 구매시 가격 (판매일 때만) */}
-          {formData.type === 'sale' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">구매시 가격 (선택사항)</label>
-              <input
-                type="number"
-                name="originalPrice"
-                value={formData.originalPrice}
-                onChange={handleInputChange}
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="원래 구매했던 가격을 입력하세요"
-              />
-            </div>
-          )}
-
-          {/* 사용 기간 */}
-          {formData.type !== 'wanted' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">사용 기간</label>
-              <input
-                type="text"
-                name="usagePeriod"
-                value={formData.usagePeriod}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="예: 6개월, 1년, 거의 새것"
-              />
-            </div>
-          )}
-
-          {/* 카테고리 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">카테고리를 선택하세요</option>
-              <option value="전자제품">전자제품</option>
-              <option value="의류">의류</option>
-              <option value="도서">도서</option>
-              <option value="가구">가구</option>
-              <option value="생활용품">생활용품</option>
-              <option value="스포츠">스포츠</option>
-              <option value="기타">기타</option>
-            </select>
-          </div>
-
-          {/* 이미지 업로드 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              이미지 {formData.type === 'wanted' ? '(선택사항 - 참고용)' : '(최대 5장)'}
+              📷 상품 사진 {formData.type === 'sale' ? '(권장 - 최대 5장)' : '(선택사항 - 최대 5장)'}
             </label>
             
             <div className="space-y-4">
               {/* 업로드 버튼 */}
               {images.length < 5 && (
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <FiCamera className="w-8 h-8 mb-4 text-gray-500" />
-                    <p className="mb-2 text-sm text-gray-500">
-                      <span className="font-semibold">클릭하여 이미지 업로드</span>
-                    </p>
-                    <p className="text-xs text-gray-500">PNG, JPG (최대 10MB)</p>
-                  </div>
+                  <FiCamera size={24} className="text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-500">사진 추가하기</span>
+                  <span className="text-xs text-gray-400 mt-1">
+                    {formData.type === 'sale' ? '판매 상품은 사진 권장' : '사진은 선택사항입니다'}
+                  </span>
                   <input
                     type="file"
                     multiple
@@ -417,12 +292,12 @@ export default function UploadPage() {
 
               {/* 이미지 미리보기 */}
               {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative">
                       <img
                         src={preview}
-                        alt={`Preview ${index + 1}`}
+                        alt={`미리보기 ${index + 1}`}
                         className="w-full h-24 object-cover rounded-lg"
                       />
                       <button
@@ -430,7 +305,7 @@ export default function UploadPage() {
                         onClick={() => removeImage(index)}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                       >
-                        <FiX size={16} />
+                        <FiX size={12} />
                       </button>
                     </div>
                   ))}
@@ -439,21 +314,182 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* 제출 버튼 */}
+          {/* 상품 타입 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">상품 타입</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleTypeChange('sale')}
+                className={`p-3 rounded-lg border text-center transition-all ${
+                  formData.type === 'sale'
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <div className="text-xl mb-1">💰</div>
+                <div className="text-sm font-medium">판매</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTypeChange('share')}
+                className={`p-3 rounded-lg border text-center transition-all ${
+                  formData.type === 'share'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <div className="text-xl mb-1">💝</div>
+                <div className="text-sm font-medium">나눔</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTypeChange('wanted')}
+                className={`p-3 rounded-lg border text-center transition-all ${
+                  formData.type === 'wanted'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <div className="text-xl mb-1">🔍</div>
+                <div className="text-sm font-medium">구하기</div>
+              </button>
+            </div>
+          </div>
+
+          {/* 상품명 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {formData.type === 'wanted' ? '구하고 싶은 상품명' : '상품명'} *
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              placeholder={formData.type === 'wanted' ? '구하고 싶은 상품을 입력하세요' : '상품명을 입력하세요'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              required
+            />
+          </div>
+
+          {/* 카테고리 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">카테고리 *</label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              required
+            >
+              <option value="">카테고리를 선택하세요</option>
+              <option value="휴대폰/태블릿">휴대폰/태블릿</option>
+              <option value="노트북/PC">노트북/PC</option>
+              <option value="모니터/주변기기">모니터/주변기기</option>
+              <option value="가구/인테리어">가구/인테리어</option>
+              <option value="유아용품">유아용품</option>
+              <option value="의류/잡화">의류/잡화</option>
+              <option value="생활용품">생활용품</option>
+              <option value="스포츠/레저">스포츠/레저</option>
+              <option value="도서/문구">도서/문구</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+
+          {/* 가격 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {formData.type === 'share' ? '가격 (나눔 - 무료)' : 
+               formData.type === 'wanted' ? '희망 가격' : '판매 가격'} 
+              {formData.type !== 'share' ? ' *' : ''}
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                name="price"
+                value={formData.type === 'share' ? '0' : formData.price}
+                onChange={handleInputChange}
+                placeholder={formData.type === 'wanted' ? '희망 가격을 입력하세요' : formData.type === 'share' ? '무료 나눔' : '가격을 입력하세요'}
+                className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                disabled={formData.type === 'share'}
+                required={formData.type !== 'share'}
+                readOnly={formData.type === 'share'}
+              />
+              <span className="absolute right-3 top-2 text-gray-500">원</span>
+            </div>
+          </div>
+
+          {/* 원가 (판매만) */}
+          {formData.type === 'sale' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">원가 (선택사항)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  name="originalPrice"
+                  value={formData.originalPrice}
+                  onChange={handleInputChange}
+                  placeholder="구매했을 때 가격"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+                <span className="absolute right-3 top-2 text-gray-500">원</span>
+              </div>
+            </div>
+          )}
+
+          {/* 사용 기간 (판매만) */}
+          {formData.type === 'sale' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">사용 기간 (선택사항)</label>
+              <input
+                type="text"
+                name="usagePeriod"
+                value={formData.usagePeriod}
+                onChange={handleInputChange}
+                placeholder="예: 6개월, 1년 등"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+          )}
+
+          {/* 상품 설명 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {formData.type === 'wanted' ? '상세 요구사항' : '상품 설명'} *
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              rows={4}
+              placeholder={
+                formData.type === 'wanted' 
+                  ? '원하는 상품의 조건, 상태 등을 자세히 적어주세요'
+                  : '상품의 상태, 구매 시기, 사용감 등을 자세히 적어주세요'
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+              required
+            />
+          </div>
+
+          {/* 등록 버튼 */}
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-3 px-4 rounded-md font-medium transition-colors ${
+            className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${
               isLoading
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                : formData.type === 'sale'
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-gray-400 cursor-not-allowed'
+                : formData.type === 'wanted'
+                ? 'bg-orange-500 hover:bg-orange-600'
                 : formData.type === 'share'
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-purple-600 text-white hover:bg-purple-700'
+                ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-green-500 hover:bg-green-600'
             }`}
           >
-            {isLoading ? '등록 중...' : getSubmitButtonText()}
+            {isLoading ? '등록 중...' : 
+             formData.type === 'wanted' ? '🔍 구하기 등록' :
+             formData.type === 'share' ? '💝 나눔 등록' : '💰 판매 등록'}
           </button>
         </form>
       </div>
