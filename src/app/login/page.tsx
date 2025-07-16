@@ -227,7 +227,7 @@ export default function LoginPage() {
           <p>
             {activeTab === 'user' 
               ? '처음 사용하시는 분은 이름과 전화번호를 입력하면 자동으로 가입됩니다.'
-              : '관리자 계정은 별도로 부여받은 정보를 사용하세요.'
+              : '관리자 계정: admin / admin123'
             }
           </p>
         </div>
