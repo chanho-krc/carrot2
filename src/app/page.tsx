@@ -14,7 +14,7 @@ export default function HomePage() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'selling' | 'reserved' | 'sold'>('all')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'sale' | 'share'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'sale' | 'share' | 'wanted'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
   const [showQR, setShowQR] = useState(false)
@@ -81,12 +81,12 @@ export default function HomePage() {
     }
   }
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, type?: string) => {
     switch (status) {
       case 'selling':
-        return '판매중'
+        return type === 'wanted' ? '구하는 중' : '판매중'
       case 'reserved':
-        return '예약됨'
+        return type === 'wanted' ? '매칭됨' : '예약됨'
       case 'sold':
         return '거래완료'
       default:
@@ -213,7 +213,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 판매/나눔 타입 필터 */}
+        {/* 판매/나눔/구하기 타입 필터 */}
         <div className="flex items-center gap-2 overflow-x-auto">
           <span className="text-gray-600 text-sm flex-shrink-0">타입:</span>
           <div className="flex gap-2">
@@ -246,6 +246,16 @@ export default function HomePage() {
               }`}
             >
               💝 나눔
+            </button>
+            <button
+              onClick={() => setTypeFilter('wanted')}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
+                typeFilter === 'wanted' 
+                  ? 'bg-orange-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🔍 구하기
             </button>
           </div>
         </div>
@@ -305,7 +315,7 @@ export default function HomePage() {
                   {/* 상태 배지 */}
                   <div className="absolute top-1 right-1">
                     <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(product.status)}`}>
-                      {getStatusText(product.status)}
+                      {getStatusText(product.status, product.type)}
                     </span>
                   </div>
                 </div>
@@ -316,22 +326,24 @@ export default function HomePage() {
                     <div className="flex items-start justify-between mb-1">
                       <h3 className="font-semibold text-gray-900 line-clamp-1 flex-1">{product.title}</h3>
                       <div className="flex gap-1 ml-2">
-                        {/* 판매/나눔 타입 배지 */}
+                        {/* 판매/나눔/구하기 타입 배지 */}
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           product.type === 'share' 
                             ? 'bg-green-100 text-green-700' 
+                            : product.type === 'wanted'
+                            ? 'bg-orange-100 text-orange-700'
                             : 'bg-blue-100 text-blue-700'
                         }`}>
-                          {product.type === 'share' ? '💝 나눔' : '💰 판매'}
+                          {product.type === 'share' ? '💝 나눔' : product.type === 'wanted' ? '🔍 구하기' : '💰 판매'}
                         </span>
                       </div>
                     </div>
                     
                     {/* 가격 표시 */}
                     <p className={`text-lg font-bold mb-1 ${
-                      product.type === 'share' ? 'text-green-600' : 'text-blue-600'
+                      product.type === 'share' ? 'text-green-600' : product.type === 'wanted' ? 'text-orange-600' : 'text-blue-600'
                     }`}>
-                      {product.type === 'share' ? '나눔' : `${formatPrice(product.price)}원`}
+                      {product.type === 'share' ? '나눔' : product.type === 'wanted' ? `희망 ${formatPrice(product.price)}원` : `${formatPrice(product.price)}원`}
                     </p>
 
                     {/* 카테고리 표시 */}

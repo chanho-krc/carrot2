@@ -17,7 +17,7 @@ export interface Product {
   seller_name: string
   seller_id: string
   status: 'selling' | 'reserved' | 'sold'
-  type: 'sale' | 'share' // 판매/나눔 구분
+  type: 'sale' | 'share' | 'wanted' // 판매/나눔/구하기 구분
   category: string // 카테고리
   images: string[]
   view_count: number
@@ -47,4 +47,4 @@ export interface AuthState {
 }
 
 export type ProductStatus = 'selling' | 'reserved' | 'sold'
-export type ProductType = 'sale' | 'share' 
+export type ProductType = 'sale' | 'share' | 'wanted' 

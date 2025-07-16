@@ -110,7 +110,7 @@ export default function ProductDetailPage() {
 
       setProduct({ ...product, status: newStatus })
       setShowStatusModal(false)
-      alert(`상품 상태가 "${getStatusText(newStatus)}"로 변경되었습니다.`)
+      alert(`상품 상태가 "${getStatusText(newStatus, product.type)}"로 변경되었습니다.`)
     } catch (error) {
       setError('상태 변경 중 오류가 발생했습니다.')
       console.error('Error updating product status:', error)
@@ -150,12 +150,12 @@ export default function ProductDetailPage() {
     return new Intl.NumberFormat('ko-KR').format(price)
   }
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, type?: string) => {
     switch (status) {
       case 'selling':
-        return '판매중'
+        return type === 'wanted' ? '구하는 중' : '판매중'
       case 'reserved':
-        return '예약됨'
+        return type === 'wanted' ? '매칭됨' : '예약됨'
       case 'sold':
         return '거래완료'
       default:
@@ -221,13 +221,18 @@ export default function ProductDetailPage() {
 
   const handleShareRequest = () => {
     if (!shareRequestReason.trim()) {
-      alert('신청 사연을 작성해주세요.')
+      const fieldName = product?.type === 'wanted' ? '판매 제안 내용' : '신청 사연'
+      alert(`${fieldName}을 작성해주세요.`)
       return
     }
 
-    // 여기서 실제로는 서버에 나눔 신청을 저장해야 하지만, 
+    // 여기서 실제로는 서버에 신청/제안을 저장해야 하지만, 
     // 현재는 간단히 알림으로 처리
-    alert(`나눔 신청이 완료되었습니다!\n\n사연: ${shareRequestReason}\n\n판매자가 확인 후 연락드릴 예정입니다.`)
+    if (product?.type === 'wanted') {
+      alert(`판매 제안이 완료되었습니다!\n\n제안 내용: ${shareRequestReason}\n\n구매자가 확인 후 연락드릴 예정입니다.`)
+    } else {
+      alert(`나눔 신청이 완료되었습니다!\n\n사연: ${shareRequestReason}\n\n판매자가 확인 후 연락드릴 예정입니다.`)
+    }
     setShowShareRequestModal(false)
     setShareRequestReason('')
   }
@@ -401,13 +406,15 @@ export default function ProductDetailPage() {
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
               <div className="flex items-center gap-2">
-                {/* 판매/나눔 타입 배지 */}
+                {/* 판매/나눔/구하기 타입 배지 */}
                 <span className={`px-2 py-1 rounded-full text-sm font-medium ${
                   product.type === 'share' 
                     ? 'bg-green-100 text-green-700' 
+                    : product.type === 'wanted'
+                    ? 'bg-orange-100 text-orange-700'
                     : 'bg-blue-100 text-blue-700'
                 }`}>
-                  {product.type === 'share' ? '💝 나눔' : '💰 판매'}
+                  {product.type === 'share' ? '💝 나눔' : product.type === 'wanted' ? '🔍 구하기' : '💰 판매'}
                 </span>
                 {/* 카테고리 배지 */}
                 <span className="px-2 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
@@ -416,14 +423,14 @@ export default function ProductDetailPage() {
               </div>
             </div>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(product.status)}`}>
-              {getStatusText(product.status)}
+              {getStatusText(product.status, product.type)}
             </span>
           </div>
           
           <p className={`text-3xl font-bold mb-4 ${
-            product.type === 'share' ? 'text-green-600' : 'text-blue-600'
+            product.type === 'share' ? 'text-green-600' : product.type === 'wanted' ? 'text-orange-600' : 'text-blue-600'
           }`}>
-            {product.type === 'share' ? '나눔' : `${formatPrice(product.price)}원`}
+            {product.type === 'share' ? '나눔' : product.type === 'wanted' ? `희망 ${formatPrice(product.price)}원` : `${formatPrice(product.price)}원`}
           </p>
           
           <div className="space-y-4">
@@ -501,7 +508,7 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 구매/나눔 신청 버튼 */}
+        {/* 구매/나눔 신청 버튼 또는 판매 제안 버튼 */}
         {!canManageProduct() && product.status === 'selling' && (
           <div className="space-y-3">
             {product.type === 'sale' ? (
@@ -511,20 +518,35 @@ export default function ProductDetailPage() {
               >
                 💰 예약하기
               </button>
-            ) : (
+            ) : product.type === 'share' ? (
               <button
                 onClick={() => setShowShareRequestModal(true)}
                 className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
               >
                 💝 나눔 신청하기
               </button>
+            ) : (
+              <button
+                onClick={() => setShowShareRequestModal(true)}
+                className="w-full bg-orange-600 text-white py-3 px-4 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+              >
+                💼 판매 제안하기
+              </button>
             )}
             
-            {/* 나눔 안내 메시지 */}
+            {/* 안내 메시지 */}
             {product.type === 'share' && (
               <div className="bg-green-50 border border-green-200 rounded-md p-3">
                 <p className="text-sm text-green-700">
                   💡 나눔 신청 시 필요한 이유를 작성해주세요. 판매자가 가장 적절한 신청자를 선택합니다.
+                </p>
+              </div>
+            )}
+            
+            {product.type === 'wanted' && (
+              <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
+                <p className="text-sm text-orange-700">
+                  💡 이 상품을 가지고 계신가요? 판매 제안을 통해 구매자와 직접 연락하세요.
                 </p>
               </div>
             )}
@@ -647,32 +669,45 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 나눔 신청 모달 */}
+        {/* 나눔 신청 / 판매 제안 모달 */}
         {showShareRequestModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-semibold mb-4 text-green-700">💝 나눔 신청하기</h3>
+              <h3 className={`text-lg font-semibold mb-4 ${
+                product.type === 'wanted' ? 'text-orange-700' : 'text-green-700'
+              }`}>
+                {product.type === 'wanted' ? '💼 판매 제안하기' : '💝 나눔 신청하기'}
+              </h3>
               
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">
                   <strong>상품명:</strong> {product.title}
                 </p>
                 <p className="text-sm text-gray-600 mb-4">
-                  이 물건이 필요한 이유를 구체적으로 작성해주세요. 
-                  판매자가 신청 사연을 보고 나눔 받을 분을 선택합니다.
+                  {product.type === 'wanted' 
+                    ? '이 상품을 판매하고 싶으시다면 연락처와 판매 조건을 작성해주세요. 구매자가 검토 후 연락드릴 예정입니다.'
+                    : '이 물건이 필요한 이유를 구체적으로 작성해주세요. 판매자가 신청 사연을 보고 나눔 받을 분을 선택합니다.'
+                  }
                 </p>
               </div>
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  신청 사연 *
+                  {product.type === 'wanted' ? '판매 제안 내용 *' : '신청 사연 *'}
                 </label>
                 <textarea
                   value={shareRequestReason}
                   onChange={(e) => setShareRequestReason(e.target.value)}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="예: 새로 이사를 와서 조명이 없어 공부할 때 불편합니다. 정말 필요해서 신청합니다..."
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${
+                    product.type === 'wanted' 
+                      ? 'focus:ring-orange-500 focus:border-orange-500'
+                      : 'focus:ring-green-500 focus:border-green-500'
+                  }`}
+                  placeholder={product.type === 'wanted' 
+                    ? "예: 동일한 제품을 가지고 있습니다. 상태 양호하며 희망가격 대로 판매 가능합니다. 010-xxxx-xxxx로 연락주세요."
+                    : "예: 새로 이사를 와서 조명이 없어 공부할 때 불편합니다. 정말 필요해서 신청합니다..."
+                  }
                 />
               </div>
 
@@ -688,9 +723,13 @@ export default function ProductDetailPage() {
                 </button>
                 <button
                   onClick={handleShareRequest}
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                  className={`flex-1 text-white py-2 px-4 rounded-md ${
+                    product.type === 'wanted'
+                      ? 'bg-orange-600 hover:bg-orange-700'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
                 >
-                  신청하기
+                  {product.type === 'wanted' ? '제안하기' : '신청하기'}
                 </button>
               </div>
             </div>
