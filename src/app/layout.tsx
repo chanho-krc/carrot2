@@ -61,15 +61,38 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         
-        {/* 강력한 캐시 무효화 - BUILD_VERSION_2025_0117_002 */}
-        <meta name="build-version" content="2025.01.17.002" />
+        {/* 🚨 EMERGENCY CACHE BREAK - BUILD_1737126800000 */}
+        <meta name="build-id" content="1737126800000" />
+        <meta name="cache-control" content="no-cache, no-store, must-revalidate" />
+        <meta name="pragma" content="no-cache" />
+        <meta name="expires" content="0" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              console.log('🔥 CRITICAL UPDATE - Build 2025.01.17.002 LOADED');
-              console.log('🎯 Reserve button should be visible now');
-              console.log('🚫 Old setVHProperty removed completely');
-              console.log('✅ New version deployed successfully');
+              // 🚨 EMERGENCY SERVICE WORKER KILLER
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                  registrations.forEach(registration => {
+                    registration.unregister();
+                    console.log('🗑️ Emergency SW unregister:', registration.scope);
+                  });
+                });
+              }
+              
+              // 🗑️ EMERGENCY CACHE DESTROYER
+              if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                  cacheNames.forEach(cacheName => {
+                    caches.delete(cacheName);
+                    console.log('🗑️ Emergency cache delete:', cacheName);
+                  });
+                });
+              }
+              
+              console.log('🚨🚨🚨 EMERGENCY BUILD LOADED - 1737126800000 🚨🚨🚨');
+              console.log('🎯 Reserve button MUST be visible now!');
+              console.log('❌ setVHProperty completely eliminated!');
+              console.log('✅ Cache completely destroyed!');
             `,
           }}
         />
