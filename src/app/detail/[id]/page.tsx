@@ -585,6 +585,35 @@ export default function ProductDetailPage() {
               </button>
             )}
             
+            {/* 예약하기 버튼 (판매 상품, 판매중 상태, 구매자용) */}
+            {product.type === 'sale' && product.status === 'selling' && !canEditProduct() && (
+              <button
+                onClick={async () => {
+                  if (confirm('이 상품을 예약하시겠습니까?')) {
+                    try {
+                      const { error } = await supabase
+                        .from('products')
+                        .update({ status: 'reserved' })
+                        .eq('id', product.id)
+
+                      if (error) {
+                        throw error
+                      }
+
+                      setProduct({ ...product, status: 'reserved' })
+                      alert('상품이 예약되었습니다!')
+                    } catch (error) {
+                      console.error('Error reserving product:', error)
+                      alert('예약 중 오류가 발생했습니다.')
+                    }
+                  }
+                }}
+                className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+              >
+                📝 예약하기
+              </button>
+            )}
+            
             {/* 상태 변경 버튼 (판매자/관리자만) */}
             {canEditProduct() && (
               <button
