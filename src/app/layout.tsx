@@ -67,15 +67,25 @@ export default function RootLayout({
             __html: `
               // 동적 viewport height 계산 및 CSS 변수 설정
               function setVHProperty() {
-                const vh = window.innerHeight * 0.01;
-                const vw = window.innerWidth * 0.01;
-                document.documentElement.style.setProperty('--vh', vh + 'px');
-                document.documentElement.style.setProperty('--vw', vw + 'px');
-                document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+                // DOM 요소 존재 확인
+                if (!document.documentElement || !document.body) {
+                  console.log('DOM not ready, skipping setVHProperty');
+                  return;
+                }
                 
-                // 배경색 강제 설정
-                document.documentElement.style.backgroundColor = '#f9fafb';
-                document.body.style.backgroundColor = '#f9fafb';
+                try {
+                  const vh = window.innerHeight * 0.01;
+                  const vw = window.innerWidth * 0.01;
+                  document.documentElement.style.setProperty('--vh', vh + 'px');
+                  document.documentElement.style.setProperty('--vw', vw + 'px');
+                  document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+                  
+                  // 배경색 강제 설정
+                  document.documentElement.style.backgroundColor = '#f9fafb';
+                  document.body.style.backgroundColor = '#f9fafb';
+                } catch (error) {
+                  console.error('Error in setVHProperty:', error);
+                }
               }
               
               // 초기 설정

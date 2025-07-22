@@ -631,8 +631,8 @@ export default function ProductDetailPage() {
               </button>
             )}
             
-            {/* 예약하기 버튼 - 테스트용으로 조건 단순화 */}
-            {true && (
+            {/* 예약하기 버튼 (판매 상품, 판매중 상태, 구매자용) */}
+            {product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user && (
               <button
                 onClick={async () => {
                   if (confirm('이 상품을 예약하시겠습니까?')) {
@@ -669,7 +669,7 @@ export default function ProductDetailPage() {
                 }}
                 className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
               >
-                📝 예약하기 (테스트)
+                📝 예약하기
               </button>
             )}
 
