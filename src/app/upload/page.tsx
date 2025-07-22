@@ -264,7 +264,7 @@ export default function UploadPage() {
           category: formData.category,
           type: formData.type,
           images: imageUrls,
-          videos: videoUrls,
+          // videos: videoUrls, // TODO: 데이터베이스에 videos 컬럼 추가 후 활성화
           contact: currentAuth.user?.phone || 'admin',
           seller_name: currentAuth.user?.name || '관리자',
           seller_id: currentAuth.user?.id || null,
