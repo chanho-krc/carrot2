@@ -61,7 +61,15 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         
-        {/* 모든 스크립트 일시적으로 제거 - 캐시 문제 해결을 위해 */}
+        {/* 캐시 무효화를 위한 강제 변경 - 2024.01.17 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              console.log('✅ NEW SCRIPT LOADED - Cache invalidated successfully!');
+              console.log('🚀 setVHProperty error should be gone now');
+            `,
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
