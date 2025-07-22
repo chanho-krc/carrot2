@@ -1,5 +1,6 @@
 {
   "name": "carrot2",
+  "buildTimestamp": "2025-01-17-emergency",
   "version": "0.1.0",
   "private": true,
   "scripts": {

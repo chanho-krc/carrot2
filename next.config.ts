@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // 🚨 FORCE NEW BUILD - Emergency Deploy 2025.01.17
+  generateBuildId: () => 'emergency-' + Date.now(),
   experimental: {
     // 필요한 경우에만 설정
   },
