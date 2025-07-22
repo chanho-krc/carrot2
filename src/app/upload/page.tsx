@@ -20,6 +20,8 @@ export default function UploadPage() {
   })
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [videos, setVideos] = useState<File[]>([])
+  const [videoPreviews, setVideoPreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -49,35 +51,72 @@ export default function UploadPage() {
     }))
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    // 파일 개수 제한
-    const totalFiles = images.length + files.length
-    if (totalFiles > 5) {
-      setError('이미지는 최대 5장까지 업로드 가능합니다.')
+    // 이미지와 비디오 파일 분리
+    const imageFiles: File[] = []
+    const videoFiles: File[] = []
+
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        imageFiles.push(file)
+      } else if (file.type.startsWith('video/')) {
+        videoFiles.push(file)
+      }
+    })
+
+    // 전체 파일 개수 제한 (이미지 + 비디오 총 10개)
+    const totalFiles = images.length + videos.length + imageFiles.length + videoFiles.length
+    if (totalFiles > 10) {
+      setError('이미지와 동영상을 합쳐 최대 10개까지 업로드 가능합니다.')
       return
     }
 
-    // 파일 크기 체크 (5MB)
-    for (const file of files) {
+    // 이미지 파일 크기 체크 (5MB)
+    for (const file of imageFiles) {
       if (file.size > 5 * 1024 * 1024) {
         setError('이미지 크기는 5MB 이하로 업로드해주세요.')
         return
       }
     }
 
-    setImages(prev => [...prev, ...files])
-
-    // 미리보기 생성
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreviews(prev => [...prev, e.target?.result as string])
+    // 비디오 파일 크기 체크 (50MB)
+    for (const file of videoFiles) {
+      if (file.size > 50 * 1024 * 1024) {
+        setError('동영상 크기는 50MB 이하로 업로드해주세요.')
+        return
       }
-      reader.readAsDataURL(file)
-    })
+    }
+
+    // 이미지 파일 추가
+    if (imageFiles.length > 0) {
+      setImages(prev => [...prev, ...imageFiles])
+      
+      // 이미지 미리보기 생성
+      imageFiles.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          setImagePreviews(prev => [...prev, e.target?.result as string])
+        }
+        reader.readAsDataURL(file)
+      })
+    }
+
+    // 비디오 파일 추가
+    if (videoFiles.length > 0) {
+      setVideos(prev => [...prev, ...videoFiles])
+      
+      // 비디오 미리보기 생성
+      videoFiles.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          setVideoPreviews(prev => [...prev, e.target?.result as string])
+        }
+        reader.readAsDataURL(file)
+      })
+    }
   }
 
   const removeImage = (index: number) => {
@@ -85,37 +124,68 @@ export default function UploadPage() {
     setImagePreviews(prev => prev.filter((_, i) => i !== index))
   }
 
-  const uploadImages = async () => {
-    const uploadedUrls: string[] = []
+  const removeVideo = (index: number) => {
+    setVideos(prev => prev.filter((_, i) => i !== index))
+    setVideoPreviews(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadMediaFiles = async () => {
+    const uploadedImageUrls: string[] = []
+    const uploadedVideoUrls: string[] = []
     
+    // 이미지 업로드
     for (const image of images) {
       try {
         const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${image.name.split('.').pop()}`
-        const filePath = `products/${fileName}`
+        const filePath = `products/images/${fileName}`
         
         const { error: uploadError } = await supabase.storage
           .from('product-images')
           .upload(filePath, image)
 
         if (uploadError) {
-          console.error('Storage upload error:', uploadError)
-          // 스토리지 에러 발생 시 빈 배열 반환 (상품 등록은 계속 진행)
-          break
+          console.error('Image upload error:', uploadError)
+          continue
         }
 
         const { data: { publicUrl } } = supabase.storage
           .from('product-images')
           .getPublicUrl(filePath)
 
-        uploadedUrls.push(publicUrl)
+        uploadedImageUrls.push(publicUrl)
       } catch (error) {
         console.error('Image upload error:', error)
-        // 개별 이미지 업로드 실패 시 해당 이미지만 스킵
         continue
       }
     }
 
-    return uploadedUrls
+    // 비디오 업로드
+    for (const video of videos) {
+      try {
+        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${video.name.split('.').pop()}`
+        const filePath = `products/videos/${fileName}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, video)
+
+        if (uploadError) {
+          console.error('Video upload error:', uploadError)
+          continue
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath)
+
+        uploadedVideoUrls.push(publicUrl)
+      } catch (error) {
+        console.error('Video upload error:', error)
+        continue
+      }
+    }
+
+    return { images: uploadedImageUrls, videos: uploadedVideoUrls }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,9 +212,9 @@ export default function UploadPage() {
         }
       }
 
-      // 이미지 권장 메시지 (필수에서 권장으로 완화)
-      if (formData.type === 'sale' && images.length === 0) {
-        const confirm = window.confirm('판매 상품은 이미지가 있으면 더 좋습니다.\n이미지 없이 등록하시겠습니까?')
+      // 미디어 권장 메시지 (필수에서 권장으로 완화)
+      if (formData.type === 'sale' && images.length === 0 && videos.length === 0) {
+        const confirm = window.confirm('판매 상품은 이미지나 동영상이 있으면 더 좋습니다.\n미디어 없이 등록하시겠습니까?')
         if (!confirm) {
           setIsLoading(false)
           return
@@ -158,18 +228,24 @@ export default function UploadPage() {
       }
 
       let imageUrls: string[] = []
-      let imageUploadWarning = ''
+      let videoUrls: string[] = []
+      let mediaUploadWarning = ''
       
-      if (images.length > 0) {
+      if (images.length > 0 || videos.length > 0) {
         try {
-          imageUrls = await uploadImages()
-          // 이미지 업로드가 부분적으로 실패한 경우
-          if (imageUrls.length < images.length) {
-            imageUploadWarning = `${images.length}장 중 ${imageUrls.length}장의 이미지만 업로드되었습니다.`
+          const uploadResult = await uploadMediaFiles()
+          imageUrls = uploadResult.images
+          videoUrls = uploadResult.videos
+          
+          // 미디어 업로드가 부분적으로 실패한 경우
+          const totalExpected = images.length + videos.length
+          const totalUploaded = imageUrls.length + videoUrls.length
+          if (totalUploaded < totalExpected) {
+            mediaUploadWarning = `${totalExpected}개 중 ${totalUploaded}개의 미디어만 업로드되었습니다.`
           }
         } catch (error) {
-          console.error('이미지 업로드 실패:', error)
-          imageUploadWarning = '이미지 업로드에 실패했지만 상품은 등록됩니다.'
+          console.error('미디어 업로드 실패:', error)
+          mediaUploadWarning = '미디어 업로드에 실패했지만 상품은 등록됩니다.'
         }
       }
 
@@ -188,6 +264,7 @@ export default function UploadPage() {
           category: formData.category,
           type: formData.type,
           images: imageUrls,
+          videos: videoUrls,
           contact: currentAuth.user?.phone || 'admin',
           seller_name: currentAuth.user?.name || '관리자',
           seller_id: currentAuth.user?.id || null,
@@ -201,8 +278,8 @@ export default function UploadPage() {
 
       // 성공 메시지
       const actionText = formData.type === 'sale' ? '판매' : formData.type === 'share' ? '나눔' : '구하기'
-      const successMessage = imageUploadWarning 
-        ? `${actionText} 상품이 등록되었습니다!\n${imageUploadWarning}`
+      const successMessage = mediaUploadWarning 
+        ? `${actionText} 상품이 등록되었습니다!\n${mediaUploadWarning}`
         : `${actionText} 상품이 성공적으로 등록되었습니다!`
       
       alert(successMessage)
@@ -265,26 +342,29 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* 이미지 업로드 - 맨 위로 이동 */}
+          {/* 미디어 업로드 (이미지 + 동영상) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📷 상품 사진 {formData.type === 'sale' ? '(권장 - 최대 5장)' : '(선택사항 - 최대 5장)'}
+              📷🎥 상품 미디어 {formData.type === 'sale' ? '(권장 - 최대 10개)' : '(선택사항 - 최대 10개)'}
             </label>
             
             <div className="space-y-4">
               {/* 업로드 버튼 */}
-              {images.length < 5 && (
+              {(images.length + videos.length) < 10 && (
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                   <FiCamera size={24} className="text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-500">사진 추가하기</span>
+                  <span className="text-sm text-gray-500">사진 또는 동영상 추가하기</span>
                   <span className="text-xs text-gray-400 mt-1">
-                    {formData.type === 'sale' ? '판매 상품은 사진 권장' : '사진은 선택사항입니다'}
+                    {formData.type === 'sale' ? '판매 상품은 미디어 권장' : '미디어는 선택사항입니다'}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    이미지: 5MB 이하, 동영상: 50MB 이하
                   </span>
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
-                    onChange={handleImageChange}
+                    accept="image/*,video/*"
+                    onChange={handleMediaChange}
                     className="hidden"
                   />
                 </label>
@@ -292,23 +372,52 @@ export default function UploadPage() {
 
               {/* 이미지 미리보기 */}
               {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={preview}
-                        alt={`미리보기 ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ))}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">📷 이미지</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={preview}
+                          alt={`이미지 미리보기 ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 동영상 미리보기 */}
+              {videoPreviews.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">🎥 동영상</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {videoPreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <video
+                          src={preview}
+                          className="w-full h-24 object-cover rounded-lg"
+                          controls
+                          muted
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeVideo(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

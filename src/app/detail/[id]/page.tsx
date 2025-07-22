@@ -18,8 +18,71 @@ export default function ProductDetailPage() {
   const [showImageModal, setShowImageModal] = useState(false)
   const [showShareRequestModal, setShowShareRequestModal] = useState(false)
   const [shareRequestReason, setShareRequestReason] = useState('')
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [mouseStart, setMouseStart] = useState<number | null>(null)
+  const [mouseEnd, setMouseEnd] = useState<number | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const router = useRouter()
   const params = useParams()
+
+  // 최소 스와이프 거리 (픽셀)
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null) // 초기화
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (product?.images && product.images.length > 1) {
+      if (isLeftSwipe && currentImageIndex < product.images.length - 1) {
+        setCurrentImageIndex(currentImageIndex + 1)
+      }
+      if (isRightSwipe && currentImageIndex > 0) {
+        setCurrentImageIndex(currentImageIndex - 1)
+      }
+    }
+  }
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    setMouseEnd(null)
+    setMouseStart(e.clientX)
+    setIsDragging(true)
+  }
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    setMouseEnd(e.clientX)
+  }
+
+  const onMouseUp = () => {
+    setIsDragging(false)
+    if (!mouseStart || !mouseEnd) return
+    
+    const distance = mouseStart - mouseEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (product?.images && product.images.length > 1) {
+      if (isLeftSwipe && currentImageIndex < product.images.length - 1) {
+        setCurrentImageIndex(currentImageIndex + 1)
+      }
+      if (isRightSwipe && currentImageIndex > 0) {
+        setCurrentImageIndex(currentImageIndex - 1)
+      }
+    }
+  }
 
   useEffect(() => {
     const authState = getAuthFromStorage()
@@ -325,71 +388,129 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 이미지 갤러리 */}
+        {/* 미디어 갤러리 (이미지 + 동영상) */}
         <div className="mb-6">
-          {product.images && product.images.length > 0 ? (
+          {(product.images && product.images.length > 0) || (product.videos && product.videos.length > 0) ? (
             <div className="space-y-4">
-              {/* 메인 이미지 */}
-              <div className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
-                <img
-                  src={product.images[currentImageIndex]}
-                  alt={product.title}
-                  className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
-                  onClick={() => setShowImageModal(true)}
-                />
-                
-                {/* 좌우 슬라이드 버튼 */}
-                {product.images.length > 1 && (
-                  <>
-                    <button
-                      onClick={goToPreviousImage}
-                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-                    >
-                      <FiChevronLeft size={20} />
-                    </button>
-                    <button
-                      onClick={goToNextImage}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-                    >
-                      <FiChevronRight size={20} />
-                    </button>
-                    
-                    {/* 이미지 인디케이터 */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                      {product.images.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentImageIndex(index)}
-                          className={`w-2 h-2 rounded-full transition-all ${
-                            index === currentImageIndex 
-                              ? 'bg-white' 
-                              : 'bg-white bg-opacity-50'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {/* 썸네일 이미지 */}
-              {product.images.length > 1 && (
-                <div className="flex gap-3 overflow-x-auto">
-                  {product.images.map((image, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentImageIndex(index)}
-                      className={`flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                        index === currentImageIndex ? 'border-blue-600' : 'border-gray-200'
-                      }`}
+              {/* 이미지 갤러리 */}
+              {product.images && product.images.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    📷 이미지 ({product.images.length}장)
+                  </h3>
+                  <div className="space-y-4">
+                    {/* 메인 이미지 */}
+                    <div 
+                      className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden select-none cursor-grab active:cursor-grabbing"
+                      onTouchStart={onTouchStart}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={onTouchEnd}
+                      onMouseDown={onMouseDown}
+                      onMouseMove={onMouseMove}
+                      onMouseUp={onMouseUp}
+                      onMouseLeave={onMouseUp}
                     >
                       <img
-                        src={image}
-                        alt={`${product.title} ${index + 1}`}
-                        className="w-full h-full object-contain"
+                        src={product.images[currentImageIndex]}
+                        alt={product.title}
+                        className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-all duration-300 ease-in-out"
+                        onClick={() => setShowImageModal(true)}
+                        draggable={false}
                       />
-                    </button>
-                  ))}
+                      
+                      {/* 스와이프 힌트 */}
+                      {product.images.length > 1 && (
+                        <>
+                          <div className="absolute top-4 right-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-full text-sm">
+                            {currentImageIndex + 1}/{product.images.length}
+                          </div>
+                          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-3 py-1 rounded-full text-xs animate-pulse">
+                            👈 스와이프하여 넘기기 👉
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* 좌우 슬라이드 버튼 */}
+                      {product.images.length > 1 && (
+                        <>
+                          <button
+                            onClick={goToPreviousImage}
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                          >
+                            <FiChevronLeft size={20} />
+                          </button>
+                          <button
+                            onClick={goToNextImage}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                          >
+                            <FiChevronRight size={20} />
+                          </button>
+                          
+                          {/* 이미지 인디케이터 */}
+                          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                            {product.images.map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`w-2 h-2 rounded-full transition-all ${
+                                  index === currentImageIndex 
+                                    ? 'bg-white' 
+                                    : 'bg-white bg-opacity-50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* 썸네일 이미지 */}
+                    {product.images.length > 1 && (
+                      <div className="flex gap-3 overflow-x-auto">
+                        {product.images.map((image, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            className={`flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                              index === currentImageIndex ? 'border-blue-600' : 'border-gray-200'
+                            }`}
+                          >
+                            <img
+                              src={image}
+                              alt={`${product.title} ${index + 1}`}
+                              className="w-full h-full object-contain"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 동영상 갤러리 */}
+              {product.videos && product.videos.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    🎥 동영상 ({product.videos.length}개)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {product.videos.map((video, index) => (
+                      <div key={index} className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
+                        <video
+                          src={video}
+                          className="w-full h-full object-contain"
+                          controls
+                          preload="metadata"
+                          style={{ backgroundColor: '#f3f4f6' }}
+                        >
+                          <p className="text-center text-gray-500 p-4">
+                            브라우저에서 동영상을 지원하지 않습니다.
+                          </p>
+                        </video>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -632,12 +753,22 @@ export default function ProductDetailPage() {
         {/* 이미지 전체 화면 모달 */}
         {showImageModal && product.images && product.images.length > 0 && (
           <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setShowImageModal(false)}>
-            <div className="relative w-full h-full max-w-4xl max-h-4xl m-4 flex items-center justify-center">
+            <div 
+              className="relative w-full h-full max-w-4xl max-h-4xl m-4 flex items-center justify-center select-none cursor-grab active:cursor-grabbing"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              onMouseDown={onMouseDown}
+              onMouseMove={onMouseMove}
+              onMouseUp={onMouseUp}
+              onMouseLeave={onMouseUp}
+            >
               <img
                 src={product.images[currentImageIndex]}
                 alt={product.title}
-                className="max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full object-contain transition-all duration-300 ease-in-out"
                 onClick={(e) => e.stopPropagation()}
+                draggable={false}
               />
               
               {/* 이미지 네비게이션 */}
