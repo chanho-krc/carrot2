@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Dynamic viewport height variables */
+  --vh: 1vh;
+  --vw: 1vw;
+  --app-height: 100vh;
 }
 
 @theme inline {
@@ -19,48 +24,84 @@
   }
 }
 
-/* === Safe Area & 모바일 최적화 스타일 === */
+/* === 강력한 Full-screen 모바일 최적화 === */
+* {
+  box-sizing: border-box;
+}
+
 html {
-  /* 전체 화면 덮기 */
-  background-color: #f9fafb; /* bg-gray-50과 동일 */
-  min-height: 100vh;
-  min-height: 100dvh; /* dynamic viewport height */
+  /* 전체 화면 강제 덮기 */
+  width: 100%;
+  height: 100%;
+  background-color: #f9fafb !important;
   
-  /* Safe area insets 적용 */
+  /* 모든 가능한 height 값 적용 */
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: 100svh; /* small viewport height */
+  min-height: 100lvh; /* large viewport height */
+  min-height: var(--app-height);
+  
+  /* Safe area insets 강화 */
   padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
   padding-left: env(safe-area-inset-left, 0);
   padding-right: env(safe-area-inset-right, 0);
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
   
-  /* 전체 화면 덮기 */
-  min-height: 100vh;
-  min-height: 100dvh;
-  margin: 0;
-  padding: 0;
-  
-  /* 모바일에서 스크롤 방지 */
+  /* 스크롤 방지 */
   overflow-x: hidden;
-  
-  /* iOS Safari에서 bounce 효과 방지 */
-  -webkit-overflow-scrolling: touch;
   position: relative;
 }
 
-/* Safe area를 고려한 전체 컨테이너 */
-#__next {
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  
+  background: #f9fafb !important;
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  
+  /* 전체 화면 강제 덮기 */
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: #f9fafb;
+  min-height: 100svh;
+  min-height: 100lvh;
+  min-height: var(--app-height);
+  
+  /* 모바일에서 스크롤 최적화 */
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  
+  /* 배경색 강제 적용 */
+  background-attachment: fixed;
 }
 
-/* 모바일 환경에서 검은색 영역 제거 */
+/* Root 컨테이너 최적화 */
+#__next,
+.next-root {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: 100svh;
+  min-height: 100lvh;
+  min-height: var(--app-height);
+  background-color: #f9fafb !important;
+  position: relative;
+}
+
+/* 모바일 환경에서 완전한 검은색 영역 제거 */
 @supports (padding: env(safe-area-inset-top)) {
+  .safe-area-container {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
   .safe-area-top {
     padding-top: env(safe-area-inset-top);
   }
@@ -78,15 +119,17 @@ body {
   }
 }
 
-/* 모바일 Viewport 최적화 */
+/* 모바일 Viewport 강화 최적화 */
 @media screen and (max-width: 768px) {
   html, body {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    overflow-x: hidden !important;
+    background-color: #f9fafb !important;
   }
   
-  /* 모바일에서 확대/축소 방지 */
+  /* 모바일에서 확대/축소 완전 방지 */
   * {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -94,26 +137,61 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   
   /* 텍스트와 input은 선택 가능하게 */
-  input, textarea, [contenteditable] {
-    -webkit-user-select: text;
-    -khtml-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    user-select: text;
+  input, textarea, [contenteditable], p, span, div[contenteditable="true"] {
+    -webkit-user-select: text !important;
+    -khtml-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+  }
+  
+  /* 모바일에서 bounce 효과 완전 제거 */
+  body {
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* 스크롤 가능한 컨테이너 */
+  .mobile-scroll-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
-/* iOS PWA 최적화 */
+/* iOS PWA 및 Standalone 모드 최적화 */
 @media (display-mode: standalone) {
   html {
-    background-color: #f9fafb;
+    background-color: #f9fafb !important;
+    height: 100vh;
+    height: 100dvh;
   }
   
   body {
-    background-color: #f9fafb;
+    background-color: #f9fafb !important;
+    height: 100vh;
+    height: 100dvh;
+  }
+}
+
+/* iOS Safari 특별 처리 */
+@supports (-webkit-appearance: none) {
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: -webkit-fill-available;
   }
 }
 
