@@ -597,32 +597,52 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* 상태 변경 모달 */}
-      {showStatusModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold mb-4">상품 상태 변경</h3>
-            <div className="space-y-3 mb-6">
-              {(['selling', 'reserved', 'sold'] as ProductStatus[]).map((status) => (
-                <label key={status} className="flex items-center">
-                  <input
-                    type="radio"
-                    name="status"
-                    value={status}
-                    checked={selectedStatus === status}
-                    onChange={(e) => setSelectedStatus(e.target.value as ProductStatus)}
-                    className="mr-3"
-                  />
-                  <span className={
-                    status === 'selling' ? 'text-green-600' :
-                    status === 'reserved' ? 'text-yellow-600' : 'text-gray-600'
-                  }>
-                    {status === 'selling' ? '판매중' :
-                     status === 'reserved' ? '예약중' : '판매완료'}
-                  </span>
-                </label>
-              ))}
-            </div>
+             {/* 상태 변경 모달 */}
+       {showStatusModal && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+           <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+             <h3 className="text-lg font-semibold mb-4">상품 상태 변경</h3>
+             <div className="space-y-3 mb-6">
+               {(['selling', 'reserved', 'sold'] as ProductStatus[]).map((status) => (
+                 <label 
+                   key={status} 
+                   className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                     selectedStatus === status
+                       ? status === 'selling' 
+                         ? 'bg-green-50 border-green-300 ring-2 ring-green-200' 
+                         : status === 'reserved'
+                         ? 'bg-yellow-50 border-yellow-300 ring-2 ring-yellow-200'
+                         : 'bg-gray-50 border-gray-300 ring-2 ring-gray-200'
+                       : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                   }`}
+                 >
+                   <input
+                     type="radio"
+                     name="status"
+                     value={status}
+                     checked={selectedStatus === status}
+                     onChange={(e) => setSelectedStatus(e.target.value as ProductStatus)}
+                     className="mr-4 text-blue-600 focus:ring-blue-500"
+                   />
+                   <div className="flex items-center space-x-2">
+                     <span className="text-xl">
+                       {status === 'selling' ? '🟢' :
+                        status === 'reserved' ? '🟡' : '⚫'}
+                     </span>
+                     <span className={`font-medium ${
+                       selectedStatus === status
+                         ? status === 'selling' ? 'text-green-700' :
+                           status === 'reserved' ? 'text-yellow-700' : 'text-gray-700'
+                         : status === 'selling' ? 'text-green-600' :
+                           status === 'reserved' ? 'text-yellow-600' : 'text-gray-600'
+                     }`}>
+                       {status === 'selling' ? '판매중' :
+                        status === 'reserved' ? '예약중' : '판매완료'}
+                     </span>
+                   </div>
+                 </label>
+               ))}
+             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowStatusModal(false)}
