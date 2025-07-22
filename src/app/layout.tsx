@@ -61,34 +61,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         
-        {/* 임시로 viewport height 스크립트 제거 - DOM 에러 해결을 위해 */}
-        
-        {/* Service Worker 일시적으로 비활성화 */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Service Worker 캐시 클리어 및 등록 해제
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                  for(let registration of registrations) {
-                    registration.unregister();
-                    console.log('SW unregistered: ', registration);
-                  }
-                });
-                
-                // 캐시 스토리지도 클리어
-                if ('caches' in window) {
-                  caches.keys().then(function(names) {
-                    for (let name of names) {
-                      caches.delete(name);
-                      console.log('Cache deleted: ', name);
-                    }
-                  });
-                }
-              }
-            `,
-          }}
-        />
+        {/* 모든 스크립트 일시적으로 제거 - 캐시 문제 해결을 위해 */}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
