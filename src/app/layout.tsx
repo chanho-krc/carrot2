@@ -67,29 +67,40 @@ export default function RootLayout({
             __html: `
               // 동적 viewport height 계산 및 CSS 변수 설정
               function setVHProperty() {
-                // DOM 요소 존재 확인
-                if (!document.documentElement || !document.body) {
-                  console.log('DOM not ready, skipping setVHProperty');
-                  return;
-                }
-                
                 try {
+                  // DOM 요소 존재 확인
+                  if (!document || !document.documentElement) {
+                    console.log('Document not ready, skipping setVHProperty');
+                    return;
+                  }
+                  
                   const vh = window.innerHeight * 0.01;
                   const vw = window.innerWidth * 0.01;
                   document.documentElement.style.setProperty('--vh', vh + 'px');
                   document.documentElement.style.setProperty('--vw', vw + 'px');
                   document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
                   
-                  // 배경색 강제 설정
-                  document.documentElement.style.backgroundColor = '#f9fafb';
-                  document.body.style.backgroundColor = '#f9fafb';
+                  // 배경색 강제 설정 (body가 존재할 때만)
+                  if (document.body) {
+                    document.documentElement.style.backgroundColor = '#f9fafb';
+                    document.body.style.backgroundColor = '#f9fafb';
+                  }
                 } catch (error) {
                   console.error('Error in setVHProperty:', error);
                 }
               }
               
-              // 초기 설정
-              setVHProperty();
+              // DOM이 완전히 준비된 후에만 실행
+              function initVH() {
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                  setVHProperty();
+                } else {
+                  document.addEventListener('DOMContentLoaded', setVHProperty);
+                }
+              }
+              
+              // 페이지 로드 완료 시 재설정
+              window.addEventListener('load', setVHProperty);
               
               // 리사이즈 이벤트 리스너
               window.addEventListener('resize', setVHProperty);
@@ -97,15 +108,8 @@ export default function RootLayout({
                 setTimeout(setVHProperty, 100);
               });
               
-              // 페이지 로드 완료 시 재설정
-              window.addEventListener('load', setVHProperty);
-              
-              // DOM이 준비되면 실행
-              if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', setVHProperty);
-              } else {
-                setVHProperty();
-              }
+              // 초기화 실행
+              initVH();
             `,
           }}
         />

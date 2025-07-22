@@ -86,10 +86,12 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     const authState = getAuthFromStorage()
+    console.log('🔍 Auth state from storage:', authState)
     setAuth(authState)
     
     // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
     if (!authState.user && !authState.isAdmin) {
+      console.log('🔍 No auth found, redirecting to login')
       router.push('/login')
       return
     }
@@ -152,6 +154,7 @@ export default function ProductDetailPage() {
         throw new Error('상품을 찾을 수 없습니다.')
       }
 
+      console.log('🔍 Product data fetched:', data)
       setProduct(data)
     } catch (error) {
       console.error('Error fetching product:', error)
@@ -632,7 +635,18 @@ export default function ProductDetailPage() {
             )}
             
             {/* 예약하기 버튼 (판매 상품, 판매중 상태, 구매자용) */}
-            {product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user && (
+            {(() => {
+              console.log('🔍 Reserve button conditions:', {
+                'product.type': product.type,
+                'product.status': product.status,
+                'canEditProduct()': canEditProduct(),
+                'auth.user': auth.user,
+                'product.seller_id': product.seller_id,
+                'auth.user?.id': auth.user?.id,
+                'final_condition': product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user
+              });
+              return product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user;
+            })() && (
               <button
                 onClick={async () => {
                   if (confirm('이 상품을 예약하시겠습니까?')) {
