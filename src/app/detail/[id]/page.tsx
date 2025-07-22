@@ -288,6 +288,42 @@ export default function ProductDetailPage() {
     }
   }
 
+  const handleReserveProduct = async () => {
+    if (!product || !auth.user) return
+
+    if (confirm('이 상품을 예약하시겠습니까?')) {
+      try {
+        const { error } = await supabase
+          .from('products')
+          .update({ 
+            status: 'reserved',
+            reserved_by_id: auth.user.id,
+            reserved_by_name: auth.user.name,
+            reserved_by_phone: auth.user.phone,
+            reserved_at: new Date().toISOString()
+          })
+          .eq('id', product.id)
+
+        if (error) {
+          throw error
+        }
+
+        setProduct({ 
+          ...product, 
+          status: 'reserved',
+          reserved_by_id: auth.user.id,
+          reserved_by_name: auth.user.name,
+          reserved_by_phone: auth.user.phone,
+          reserved_at: new Date().toISOString()
+        })
+        alert('✅ 상품이 예약되었습니다!\n판매자가 확인 후 연락드릴 예정입니다.')
+      } catch (error) {
+        console.error('Error reserving product:', error)
+        alert('❌ 예약 중 오류가 발생했습니다. 다시 시도해주세요.')
+      }
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -634,54 +670,11 @@ export default function ProductDetailPage() {
               </button>
             )}
             
-            {/* 예약하기 버튼 (판매 상품, 판매중 상태, 구매자용) */}
-            {(() => {
-              console.log('🔍 Reserve button conditions:', {
-                'product.type': product.type,
-                'product.status': product.status,
-                'canEditProduct()': canEditProduct(),
-                'auth.user': auth.user,
-                'product.seller_id': product.seller_id,
-                'auth.user?.id': auth.user?.id,
-                'final_condition': product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user
-              });
-              return product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user;
-            })() && (
+            {/* 예약하기 버튼 - 판매 상품을 구매자가 예약할 때 */}
+            {product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user && (
               <button
-                onClick={async () => {
-                  if (confirm('이 상품을 예약하시겠습니까?')) {
-                    try {
-                      const { error } = await supabase
-                        .from('products')
-                        .update({ 
-                          status: 'reserved',
-                          reserved_by_id: auth.user?.id,
-                          reserved_by_name: auth.user?.name,
-                          reserved_by_phone: auth.user?.phone,
-                          reserved_at: new Date().toISOString()
-                        })
-                        .eq('id', product.id)
-
-                      if (error) {
-                        throw error
-                      }
-
-                      setProduct({ 
-                        ...product, 
-                        status: 'reserved',
-                        reserved_by_id: auth.user?.id,
-                        reserved_by_name: auth.user?.name,
-                        reserved_by_phone: auth.user?.phone,
-                        reserved_at: new Date().toISOString()
-                      })
-                      alert('상품이 예약되었습니다!')
-                    } catch (error) {
-                      console.error('Error reserving product:', error)
-                      alert('예약 중 오류가 발생했습니다.')
-                    }
-                  }
-                }}
-                className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                onClick={handleReserveProduct}
+                className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
               >
                 📝 예약하기
               </button>
