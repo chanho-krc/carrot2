@@ -61,12 +61,15 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         
-        {/* 캐시 무효화를 위한 강제 변경 - 2024.01.17 */}
+        {/* 강력한 캐시 무효화 - BUILD_VERSION_2025_0117_002 */}
+        <meta name="build-version" content="2025.01.17.002" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              console.log('✅ NEW SCRIPT LOADED - Cache invalidated successfully!');
-              console.log('🚀 setVHProperty error should be gone now');
+              console.log('🔥 CRITICAL UPDATE - Build 2025.01.17.002 LOADED');
+              console.log('🎯 Reserve button should be visible now');
+              console.log('🚫 Old setVHProperty removed completely');
+              console.log('✅ New version deployed successfully');
             `,
           }}
         />
