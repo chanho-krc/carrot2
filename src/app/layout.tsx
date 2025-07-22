@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   title: "KRC 당근",
   description: "KRC 내부 중고거래 마켓플레이스",
   manifest: '/manifest.json',
-  themeColor: '#2563eb',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+  themeColor: '#f9fafb',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -45,11 +45,12 @@ export default function RootLayout({
     <html lang="ko">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#f9fafb" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="KRC 당근" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />

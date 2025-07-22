@@ -31,9 +31,9 @@ export default function Layout({ children }: LayoutProps) {
   const isAuthenticated = auth.user || auth.isAdmin
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen min-h-[100dvh] bg-gray-50 safe-area-top safe-area-bottom safe-area-left safe-area-right">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b sticky top-0 z-10 safe-area-top">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-xl font-bold text-gray-800">
@@ -58,13 +58,13 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-lg mx-auto min-h-screen pb-20">
+      <main className="max-w-lg mx-auto min-h-screen min-h-[100dvh] pb-20 safe-area-left safe-area-right">
         {children}
       </main>
 
       {/* Bottom Navigation */}
       {isAuthenticated && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t z-20 safe-area-bottom safe-area-left safe-area-right">
           <div className="max-w-lg mx-auto px-4 py-2">
             <div className="flex justify-around">
               <Link
