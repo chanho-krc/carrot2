@@ -63,20 +63,28 @@ export default function RootLayout({
         
         {/* 임시로 viewport height 스크립트 제거 - DOM 에러 해결을 위해 */}
         
-        {/* Service Worker 등록 */}
+        {/* Service Worker 일시적으로 비활성화 */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Service Worker 캐시 클리어 및 등록 해제
               if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
-                    });
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('SW unregistered: ', registration);
+                  }
                 });
+                
+                // 캐시 스토리지도 클리어
+                if ('caches' in window) {
+                  caches.keys().then(function(names) {
+                    for (let name of names) {
+                      caches.delete(name);
+                      console.log('Cache deleted: ', name);
+                    }
+                  });
+                }
               }
             `,
           }}
