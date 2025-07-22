@@ -670,8 +670,28 @@ export default function ProductDetailPage() {
               </button>
             )}
             
-            {/* 예약하기 버튼 - 판매 상품을 구매자가 예약할 때 */}
-            {product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user && (
+            {/* 예약하기 버튼 - 판매 상품을 구매자가 예약할 때 (판매자 본인 제외) */}
+            {(() => {
+              const isOwner = auth.user?.id === product?.seller_id;
+              const isAdmin = auth.isAdmin;
+              const canReserve = product.type === 'sale' && 
+                               product.status === 'selling' && 
+                               auth.user && 
+                               !isOwner && 
+                               !isAdmin;
+              
+              console.log('🔍 Reserve button debug:', {
+                'product.type': product.type,
+                'product.status': product.status, 
+                'auth.user?.id': auth.user?.id,
+                'product.seller_id': product.seller_id,
+                'isOwner': isOwner,
+                'isAdmin': isAdmin,
+                'canReserve': canReserve
+              });
+              
+              return canReserve;
+            })() && (
               <button
                 onClick={handleReserveProduct}
                 className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
