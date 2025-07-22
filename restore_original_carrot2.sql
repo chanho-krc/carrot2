@@ -1,12 +1,12 @@
 -- =============================================
--- Carrot2 원래 상태 복원 스크립트
--- 동영상 기능 추가 이전의 상태로 되돌립니다
+-- Carrot2 복원 스크립트 (동영상 기능 포함)
+-- 동영상 업로드 기능을 포함한 완전한 상태로 복원합니다
 -- =============================================
 
 -- 1. 기존 products 테이블 삭제
 DROP TABLE IF EXISTS products CASCADE;
 
--- 2. 원래 products 테이블 생성 (videos 컬럼 없음)
+-- 2. videos 컬럼이 포함된 products 테이블 생성
 CREATE TABLE products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title VARCHAR(200) NOT NULL,
@@ -20,7 +20,8 @@ CREATE TABLE products (
   status VARCHAR(20) DEFAULT 'selling' CHECK (status IN ('selling', 'reserved', 'sold')),
   type VARCHAR(10) DEFAULT 'sale' CHECK (type IN ('sale', 'share', 'wanted')),
   category VARCHAR(100),
-  images TEXT[] DEFAULT '{}', -- 이미지만 (동영상 컬럼 없음)
+  images TEXT[] DEFAULT '{}', -- 이미지 URL 배열
+  videos TEXT[] DEFAULT '{}', -- 동영상 URL 배열 ★ 추가 ★
   view_count INTEGER DEFAULT 0,
   -- 예약자 정보
   reserved_by_id UUID,
@@ -55,7 +56,17 @@ CREATE TRIGGER update_products_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
--- 6. RLS 정책 설정
+-- 6. 조회수 증가 함수 생성
+CREATE OR REPLACE FUNCTION increment_view_count(product_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE products 
+  SET view_count = view_count + 1, updated_at = NOW()
+  WHERE id = product_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 7. RLS 정책 설정
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 
 -- 기존 정책들 삭제 (에러 방지)
@@ -77,22 +88,33 @@ CREATE POLICY "Enable update for all users" ON products
 CREATE POLICY "Enable delete for all users" ON products 
   FOR DELETE USING (true);
 
--- 7. 테스트 데이터 삽입 (원래 상태 확인용)
+-- 8. 테스트 데이터 삽입 (동영상 기능 테스트용)
 INSERT INTO products (title, description, price, contact, seller_name, type, category, status)
 VALUES 
-  ('아이폰 15 판매', '상태 좋은 아이폰 15 판매합니다', 800000, '010-1234-5678', '김판매', 'sale', '전자기기', 'selling'),
-  ('책 무료나눔', '읽지 않는 책들 나눔합니다', 0, '010-9876-5432', '이나눔', 'share', '도서', 'selling'),
-  ('맥북 구합니다', 'M1/M2 맥북 구하고 있습니다', 1500000, '010-5555-1234', '박구매', 'wanted', '전자기기', 'selling'),
-  ('자전거 판매', '거의 새것 같은 자전거입니다', 150000, '010-7777-8888', '최자전거', 'sale', '스포츠/레저', 'selling'),
-  ('화분 나눔', '키우기 쉬운 화분들 나눔해요', 0, '010-3333-4444', '정식물', 'share', '생활용품', 'selling');
+  ('아이폰 15 Pro', '상태 좋은 아이폰 15 Pro 판매합니다', 1200000, '010-1234-5678', '김판매', 'sale', '휴대폰/태블릿', 'selling'),
+  ('책 무료나눔', '읽지 않는 컴퓨터 관련 책들 나눔합니다', 0, '010-9876-5432', '이나눔', 'share', '도서/문구', 'selling'),
+  ('맥북 프로 구합니다', 'M2/M3 맥북 프로 구하고 있습니다', 2000000, '010-5555-1234', '박구매', 'wanted', '노트북/PC', 'selling'),
+  ('무선 이어폰 판매', '새것 같은 에어팟 프로 판매합니다', 200000, '010-7777-8888', '최이어폰', 'sale', '모니터/주변기기', 'selling'),
+  ('화분 나눔해요', '키우기 쉬운 다육식물 화분들 나눔해요', 0, '010-3333-4444', '정식물', 'share', '생활용품', 'selling');
 
--- 8. 결과 확인
+-- 9. 결과 확인
 SELECT 
-  'SUCCESS: Carrot2가 원래 상태로 복원되었습니다!' as result,
+  'SUCCESS: Carrot2가 동영상 기능과 함께 복원되었습니다!' as result,
   COUNT(*) || '개의 테스트 상품이 생성되었습니다.' as test_data
 FROM products;
 
--- 9. 테이블 구조 확인
+-- 10. videos 컬럼 확인
+SELECT 
+  column_name, 
+  data_type, 
+  column_default,
+  is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'products' 
+AND column_name IN ('images', 'videos')
+ORDER BY column_name;
+
+-- 11. 전체 테이블 구조 확인
 SELECT 
   column_name,
   data_type,
