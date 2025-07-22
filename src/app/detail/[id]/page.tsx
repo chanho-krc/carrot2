@@ -103,7 +103,7 @@ export default function ProductDetailPage() {
 
   // 브라우저 뒤로가기 이벤트 처리 (이미지 모달용)
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = (_event: PopStateEvent) => {
       if (showImageModal) {
         // 모달이 열려있으면 모달만 닫고 페이지 이동 방지
         setShowImageModal(false)
