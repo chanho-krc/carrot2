@@ -315,7 +315,7 @@ export default function ProductDetailPage() {
                   <div className="space-y-4">
                     {/* 메인 이미지 */}
                     <div 
-                      className="relative w-full h-80 bg-gray-100 overflow-hidden select-none cursor-grab active:cursor-grabbing"
+                      className="group relative w-full h-80 bg-gray-100 overflow-hidden select-none cursor-grab active:cursor-grabbing"
                       onTouchStart={onTouchStart}
                       onTouchMove={onTouchMove}
                       onTouchEnd={onTouchEnd}
@@ -332,48 +332,28 @@ export default function ProductDetailPage() {
                         draggable={false}
                       />
                       
-                      {/* 스와이프 힌트 */}
+                      {/* 깔끔한 이미지 카운터 (우상단만) */}
                       {product.images.length > 1 && (
-                        <>
-                          <div className="absolute top-4 right-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-full text-sm">
-                            {currentImageIndex + 1}/{product.images.length}
-                          </div>
-                          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-3 py-1 rounded-full text-xs animate-pulse">
-                            👈 스와이프하여 넘기기 👉
-                          </div>
-                        </>
+                        <div className="absolute top-4 right-4 bg-white bg-opacity-90 text-gray-800 px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+                          {currentImageIndex + 1}/{product.images.length}
+                        </div>
                       )}
                       
-                      {/* 좌우 슬라이드 버튼 */}
+                      {/* 좌우 슬라이드 버튼 (호버 시에만 표시) */}
                       {product.images.length > 1 && (
                         <>
                           <button
                             onClick={goToPreviousImage}
-                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 text-gray-800 p-2 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
                           >
                             <FiChevronLeft size={20} />
                           </button>
                           <button
                             onClick={goToNextImage}
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 text-gray-800 p-2 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
                           >
                             <FiChevronRight size={20} />
                           </button>
-                          
-                          {/* 이미지 인디케이터 */}
-                          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                            {product.images.map((_, index) => (
-                              <button
-                                key={index}
-                                onClick={() => setCurrentImageIndex(index)}
-                                className={`w-2 h-2 rounded-full transition-all ${
-                                  index === currentImageIndex 
-                                    ? 'bg-white' 
-                                    : 'bg-white bg-opacity-50'
-                                }`}
-                              />
-                            ))}
-                          </div>
                         </>
                       )}
                     </div>
@@ -727,36 +707,27 @@ export default function ProductDetailPage() {
                 draggable={false}
               />
               
-              {product.images.length > 1 && (
-                <>
-                  <button
-                    onClick={goToPreviousImage}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-all"
-                  >
-                    <FiChevronLeft size={24} />
-                  </button>
-                  <button
-                    onClick={goToNextImage}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-all"
-                  >
-                    <FiChevronRight size={24} />
-                  </button>
-                  
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                    {product.images.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`w-3 h-3 rounded-full transition-all ${
-                          index === currentImageIndex 
-                            ? 'bg-white' 
-                            : 'bg-white bg-opacity-50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
+                             {product.images.length > 1 && (
+                 <>
+                   {/* 이미지 카운터 (전체화면) */}
+                   <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-medium">
+                     {currentImageIndex + 1} / {product.images.length}
+                   </div>
+                   
+                   <button
+                     onClick={goToPreviousImage}
+                     className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 text-gray-800 p-3 rounded-full hover:bg-opacity-100 transition-all shadow-lg"
+                   >
+                     <FiChevronLeft size={24} />
+                   </button>
+                   <button
+                     onClick={goToNextImage}
+                     className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 text-gray-800 p-3 rounded-full hover:bg-opacity-100 transition-all shadow-lg"
+                   >
+                     <FiChevronRight size={24} />
+                   </button>
+                 </>
+               )}
             </div>
           </div>
         </div>
