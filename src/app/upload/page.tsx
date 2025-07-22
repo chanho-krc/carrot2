@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { FiArrowLeft, FiX, FiCamera } from 'react-icons/fi'
+import { FiArrowLeft, FiX, FiCamera, FiUser } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
-import { AuthState, ProductType } from '@/types'
+import { AuthState, ProductType, User } from '@/types'
 
 export default function UploadPage() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
@@ -20,10 +20,15 @@ export default function UploadPage() {
   })
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
-  const [videos, setVideos] = useState<File[]>([])
-  const [videoPreviews, setVideoPreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  
+  // 관리자용 사용자 선택 기능
+  const [users, setUsers] = useState<User[]>([])
+  const [selectedUserId, setSelectedUserId] = useState<string>('')
+  const [selectedUserName, setSelectedUserName] = useState<string>('')
+  const [selectedUserPhone, setSelectedUserPhone] = useState<string>('')
+  
   const router = useRouter()
 
   useEffect(() => {
@@ -33,7 +38,48 @@ export default function UploadPage() {
     if (!authState.user && !authState.isAdmin) {
       router.push('/login')
     }
+
+    // 관리자인 경우 사용자 목록 불러오기
+    if (authState.isAdmin) {
+      fetchUsers()
+    }
   }, [router])
+
+  // 사용자 목록 가져오기 (관리자 전용)
+  const fetchUsers = async () => {
+    try {
+      const { data: usersData, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('name')
+
+      if (error) {
+        console.error('Error fetching users:', error)
+        return
+      }
+
+      setUsers(usersData || [])
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
+
+  // 사용자 선택 핸들러
+  const handleUserSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const userId = e.target.value
+    setSelectedUserId(userId)
+
+    if (userId) {
+      const selectedUser = users.find(user => user.id === userId)
+      if (selectedUser) {
+        setSelectedUserName(selectedUser.name)
+        setSelectedUserPhone(selectedUser.phone)
+      }
+    } else {
+      setSelectedUserName('')
+      setSelectedUserPhone('')
+    }
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -51,30 +97,20 @@ export default function UploadPage() {
     }))
   }
 
-  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    // 이미지와 비디오 파일 분리
-    const imageFiles: File[] = []
-    const videoFiles: File[] = []
-
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        imageFiles.push(file)
-      } else if (file.type.startsWith('video/')) {
-        videoFiles.push(file)
-      }
-    })
-
-    // 전체 파일 개수 제한 (이미지 + 비디오 총 10개)
-    const totalFiles = images.length + videos.length + imageFiles.length + videoFiles.length
-    if (totalFiles > 10) {
-      setError('이미지와 동영상을 합쳐 최대 10개까지 업로드 가능합니다.')
+    // 이미지 파일만 필터링
+    const imageFiles = files.filter(file => file.type.startsWith('image/'))
+    
+    // 총 5개 제한
+    if (images.length + imageFiles.length > 5) {
+      setError('이미지는 최대 5개까지 업로드 가능합니다.')
       return
     }
 
-    // 이미지 파일 크기 체크 (5MB)
+    // 파일 크기 체크 (5MB)
     for (const file of imageFiles) {
       if (file.size > 5 * 1024 * 1024) {
         setError('이미지 크기는 5MB 이하로 업로드해주세요.')
@@ -82,41 +118,17 @@ export default function UploadPage() {
       }
     }
 
-    // 비디오 파일 크기 체크 (50MB)
-    for (const file of videoFiles) {
-      if (file.size > 50 * 1024 * 1024) {
-        setError('동영상 크기는 50MB 이하로 업로드해주세요.')
-        return
+    // 이미지 추가
+    setImages(prev => [...prev, ...imageFiles])
+    
+    // 미리보기 생성
+    imageFiles.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreviews(prev => [...prev, e.target?.result as string])
       }
-    }
-
-    // 이미지 파일 추가
-    if (imageFiles.length > 0) {
-      setImages(prev => [...prev, ...imageFiles])
-      
-      // 이미지 미리보기 생성
-      imageFiles.forEach(file => {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setImagePreviews(prev => [...prev, e.target?.result as string])
-        }
-        reader.readAsDataURL(file)
-      })
-    }
-
-    // 비디오 파일 추가
-    if (videoFiles.length > 0) {
-      setVideos(prev => [...prev, ...videoFiles])
-      
-      // 비디오 미리보기 생성
-      videoFiles.forEach(file => {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setVideoPreviews(prev => [...prev, e.target?.result as string])
-        }
-        reader.readAsDataURL(file)
-      })
-    }
+      reader.readAsDataURL(file)
+    })
   }
 
   const removeImage = (index: number) => {
@@ -124,16 +136,9 @@ export default function UploadPage() {
     setImagePreviews(prev => prev.filter((_, i) => i !== index))
   }
 
-  const removeVideo = (index: number) => {
-    setVideos(prev => prev.filter((_, i) => i !== index))
-    setVideoPreviews(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const uploadMediaFiles = async () => {
-    const uploadedImageUrls: string[] = []
-    const uploadedVideoUrls: string[] = []
+  const uploadImages = async () => {
+    const uploadedUrls: string[] = []
     
-    // 이미지 업로드
     for (const image of images) {
       try {
         const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${image.name.split('.').pop()}`
@@ -152,40 +157,14 @@ export default function UploadPage() {
           .from('product-images')
           .getPublicUrl(filePath)
 
-        uploadedImageUrls.push(publicUrl)
+        uploadedUrls.push(publicUrl)
       } catch (error) {
         console.error('Image upload error:', error)
         continue
       }
     }
 
-    // 비디오 업로드
-    for (const video of videos) {
-      try {
-        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${video.name.split('.').pop()}`
-        const filePath = `products/videos/${fileName}`
-        
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, video)
-
-        if (uploadError) {
-          console.error('Video upload error:', uploadError)
-          continue
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath)
-
-        uploadedVideoUrls.push(publicUrl)
-      } catch (error) {
-        console.error('Video upload error:', error)
-        continue
-      }
-    }
-
-    return { images: uploadedImageUrls, videos: uploadedVideoUrls }
+    return uploadedUrls
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -212,9 +191,14 @@ export default function UploadPage() {
         }
       }
 
-      // 미디어 권장 메시지 (필수에서 권장으로 완화)
-      if (formData.type === 'sale' && images.length === 0 && videos.length === 0) {
-        const confirm = window.confirm('판매 상품은 이미지나 동영상이 있으면 더 좋습니다.\n미디어 없이 등록하시겠습니까?')
+      // 관리자가 사용자를 선택했는지 확인
+      if (auth.isAdmin && !selectedUserId) {
+        throw new Error('판매자를 선택해주세요.')
+      }
+
+      // 이미지 권장 메시지 (필수에서 권장으로 완화)
+      if (formData.type === 'sale' && images.length === 0) {
+        const confirm = window.confirm('판매 상품은 이미지가 있으면 더 좋습니다.\n이미지 없이 등록하시겠습니까?')
         if (!confirm) {
           setIsLoading(false)
           return
@@ -228,29 +212,35 @@ export default function UploadPage() {
       }
 
       let imageUrls: string[] = []
-      let videoUrls: string[] = []
-      let mediaUploadWarning = ''
+      let imageUploadWarning = ''
       
-      if (images.length > 0 || videos.length > 0) {
+      if (images.length > 0) {
         try {
-          const uploadResult = await uploadMediaFiles()
-          imageUrls = uploadResult.images
-          videoUrls = uploadResult.videos
+          imageUrls = await uploadImages()
           
-          // 미디어 업로드가 부분적으로 실패한 경우
-          const totalExpected = images.length + videos.length
-          const totalUploaded = imageUrls.length + videoUrls.length
-          if (totalUploaded < totalExpected) {
-            mediaUploadWarning = `${totalExpected}개 중 ${totalUploaded}개의 미디어만 업로드되었습니다.`
+          // 이미지 업로드가 부분적으로 실패한 경우
+          if (imageUrls.length < images.length) {
+            imageUploadWarning = `${images.length}개 중 ${imageUrls.length}개의 이미지만 업로드되었습니다.`
           }
         } catch (error) {
-          console.error('미디어 업로드 실패:', error)
-          mediaUploadWarning = '미디어 업로드에 실패했지만 상품은 등록됩니다.'
+          console.error('이미지 업로드 실패:', error)
+          imageUploadWarning = '이미지 업로드에 실패했지만 상품은 등록됩니다.'
         }
       }
 
       // 가격 설정 (나눔은 0, 나머지는 입력값)
       const finalPrice = formData.type === 'share' ? 0 : parseFloat(formData.price)
+
+      // 판매자 정보 결정 (관리자가 선택한 사용자 또는 현재 사용자)
+      const sellerInfo = auth.isAdmin && selectedUserId ? {
+        contact: selectedUserPhone,
+        seller_name: selectedUserName,
+        seller_id: selectedUserId
+      } : {
+        contact: currentAuth.user?.phone || 'admin',
+        seller_name: currentAuth.user?.name || '관리자',
+        seller_id: currentAuth.user?.id || null
+      }
 
       // Supabase에 상품 데이터 삽입
       const { error: insertError } = await supabase
@@ -264,10 +254,9 @@ export default function UploadPage() {
           category: formData.category,
           type: formData.type,
           images: imageUrls,
-          videos: videoUrls, // videos 컬럼 활성화
-          contact: currentAuth.user?.phone || 'admin',
-          seller_name: currentAuth.user?.name || '관리자',
-          seller_id: currentAuth.user?.id || null,
+          contact: sellerInfo.contact,
+          seller_name: sellerInfo.seller_name,
+          seller_id: sellerInfo.seller_id,
           status: 'selling',
           view_count: 0
         })
@@ -278,9 +267,10 @@ export default function UploadPage() {
 
       // 성공 메시지
       const actionText = formData.type === 'sale' ? '판매' : formData.type === 'share' ? '나눔' : '구하기'
-      const successMessage = mediaUploadWarning 
-        ? `${actionText} 상품이 등록되었습니다!\n${mediaUploadWarning}`
-        : `${actionText} 상품이 성공적으로 등록되었습니다!`
+      const sellerText = auth.isAdmin && selectedUserName ? ` (판매자: ${selectedUserName})` : ''
+      const successMessage = imageUploadWarning 
+        ? `${actionText} 상품이 등록되었습니다!${sellerText}\n${imageUploadWarning}`
+        : `${actionText} 상품이 성공적으로 등록되었습니다!${sellerText}`
       
       alert(successMessage)
       router.push('/')
@@ -328,7 +318,9 @@ export default function UploadPage() {
           >
             <FiArrowLeft size={24} />
           </button>
-          <h1 className="ml-4 text-xl font-semibold">상품 등록</h1>
+          <h1 className="ml-4 text-xl font-semibold">
+            {auth.isAdmin ? '관리자 상품 등록' : '상품 등록'}
+          </h1>
         </div>
       </div>
 
@@ -342,29 +334,58 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* 미디어 업로드 (이미지 + 동영상) */}
+          {/* 관리자 전용: 판매자 선택 */}
+          {auth.isAdmin && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-blue-800 mb-2">
+                👑 관리자 모드: 판매자 선택 *
+              </label>
+              <select
+                value={selectedUserId}
+                onChange={handleUserSelect}
+                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                required
+              >
+                <option value="">판매자를 선택하세요</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.phone})
+                  </option>
+                ))}
+              </select>
+              
+              {selectedUserName && (
+                <div className="mt-2 text-sm text-blue-600 bg-blue-100 px-3 py-2 rounded">
+                  <FiUser className="inline mr-1" />
+                  선택된 판매자: <strong>{selectedUserName}</strong> ({selectedUserPhone})
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 이미지 업로드 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📷🎥 상품 미디어 {formData.type === 'sale' ? '(권장 - 최대 10개)' : '(선택사항 - 최대 10개)'}
+              📷 상품 이미지 {formData.type === 'sale' ? '(권장 - 최대 5개)' : '(선택사항 - 최대 5개)'}
             </label>
             
             <div className="space-y-4">
               {/* 업로드 버튼 */}
-              {(images.length + videos.length) < 10 && (
+              {images.length < 5 && (
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                   <FiCamera size={24} className="text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-500">사진 또는 동영상 추가하기</span>
+                  <span className="text-sm text-gray-500">사진 추가하기</span>
                   <span className="text-xs text-gray-400 mt-1">
-                    {formData.type === 'sale' ? '판매 상품은 미디어 권장' : '미디어는 선택사항입니다'}
+                    {formData.type === 'sale' ? '판매 상품은 이미지 권장' : '이미지는 선택사항입니다'}
                   </span>
                   <span className="text-xs text-gray-400">
-                    이미지: 5MB 이하, 동영상: 50MB 이하
+                    이미지: 5MB 이하, 최대 5개
                   </span>
                   <input
                     type="file"
                     multiple
-                    accept="image/*,video/*"
-                    onChange={handleMediaChange}
+                    accept="image/*"
+                    onChange={handleImageChange}
                     className="hidden"
                   />
                 </label>
@@ -372,52 +393,23 @@ export default function UploadPage() {
 
               {/* 이미지 미리보기 */}
               {imagePreviews.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">📷 이미지</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={preview}
-                          alt={`이미지 미리보기 ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        >
-                          <FiX size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 동영상 미리보기 */}
-              {videoPreviews.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">🎥 동영상</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {videoPreviews.map((preview, index) => (
-                      <div key={index} className="relative">
-                        <video
-                          src={preview}
-                          className="w-full h-24 object-cover rounded-lg"
-                          controls
-                          muted
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeVideo(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        >
-                          <FiX size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={preview}
+                        alt={`이미지 미리보기 ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -20,7 +20,6 @@ export interface Product {
   type: 'sale' | 'share' | 'wanted' // 판매/나눔/구하기 구분
   category: string // 카테고리
   images: string[]
-  videos?: string[] // 동영상 URL 배열
   view_count: number
   // 예약자 정보
   reserved_by_id?: string

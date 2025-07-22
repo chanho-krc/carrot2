@@ -388,16 +388,13 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 미디어 갤러리 (이미지 + 동영상) */}
+        {/* 이미지 갤러리 */}
         <div className="mb-6">
-          {(product.images && product.images.length > 0) || (product.videos && product.videos.length > 0) ? (
-            <div className="space-y-4">
-              {/* 이미지 갤러리 */}
-              {product.images && product.images.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    📷 이미지 ({product.images.length}장)
-                  </h3>
+          {product.images && product.images.length > 0 ? (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                📷 이미지 ({product.images.length}장)
+              </h3>
                   <div className="space-y-4">
                     {/* 메인 이미지 */}
                     <div 
@@ -487,33 +484,6 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               )}
-
-              {/* 동영상 갤러리 */}
-              {product.videos && product.videos.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    🎥 동영상 ({product.videos.length}개)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {product.videos.map((video, index) => (
-                      <div key={index} className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
-                        <video
-                          src={video}
-                          className="w-full h-full object-contain"
-                          controls
-                          preload="metadata"
-                          style={{ backgroundColor: '#f3f4f6' }}
-                        >
-                          <p className="text-center text-gray-500 p-4">
-                            브라우저에서 동영상을 지원하지 않습니다.
-                          </p>
-                        </video>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
           ) : (
             <div className="w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center">
               <span className="text-8xl text-gray-400">📦</span>
