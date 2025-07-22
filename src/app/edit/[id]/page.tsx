@@ -117,8 +117,8 @@ export default function EditProductPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     
-    if (files.length + selectedImages.length + existingImages.length > 3) {
-      setError('이미지는 최대 3개까지 업로드할 수 있습니다.')
+    if (files.length + selectedImages.length + existingImages.length > 10) {
+      setError('이미지는 최대 10개까지 업로드할 수 있습니다.')
       return
     }
 

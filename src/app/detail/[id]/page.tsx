@@ -99,6 +99,37 @@ export default function ProductDetailPage() {
     }
   }, [router, params.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 브라우저 뒤로가기 이벤트 처리 (이미지 모달용)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (showImageModal) {
+        // 모달이 열려있으면 모달만 닫고 페이지 이동 방지
+        setShowImageModal(false)
+        // 히스토리를 다시 추가해서 뒤로가기 방지
+        window.history.pushState({ modalOpen: false }, '', window.location.href)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showImageModal) {
+        setShowImageModal(false)
+      }
+    }
+
+    // 이미지 모달이 열릴 때 히스토리 상태 추가
+    if (showImageModal) {
+      window.history.pushState({ modalOpen: true }, '', window.location.href)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    window.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showImageModal])
+
   const fetchProduct = useCallback(async (id: string) => {
     try {
       setIsLoading(true)
