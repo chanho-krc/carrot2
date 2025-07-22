@@ -572,6 +572,52 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
+        {/* 예약자 정보 (판매자에게만 표시, 예약된 상품인 경우) */}
+        {canEditProduct() && product.status === 'reserved' && product.reserved_by_name && (
+          <div className="bg-orange-50 rounded-lg shadow-sm border border-orange-200 p-6 mb-6">
+            <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
+              <FiCalendar size={18} />
+              예약자 정보
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="w-16 font-medium text-orange-700">예약자</span>
+                <span className="text-orange-900 font-medium">{product.reserved_by_name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiPhone size={16} className="text-orange-600" />
+                <span className="w-16 font-medium text-orange-700">연락처</span>
+                <a 
+                  href={`tel:${product.reserved_by_phone}`}
+                  className="text-orange-800 hover:underline font-medium"
+                >
+                  {product.reserved_by_phone}
+                </a>
+              </div>
+              {product.reserved_at && (
+                <div className="flex items-center gap-2">
+                  <FiCalendar size={16} className="text-orange-600" />
+                  <span className="w-16 font-medium text-orange-700">예약일</span>
+                  <span className="text-orange-900">
+                    {new Date(product.reserved_at).toLocaleDateString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 p-3 bg-orange-100 rounded-lg">
+              <p className="text-sm text-orange-800">
+                💡 예약자에게 직접 연락하여 거래를 진행하세요.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* 액션 버튼들 */}
         <div className="bg-white border-t p-6 sticky bottom-0">
           <div className="flex gap-3">
@@ -585,56 +631,104 @@ export default function ProductDetailPage() {
               </button>
             )}
             
-            {/* 예약하기 버튼 - 디버깅용으로 항상 표시 */}
-            <button
-              onClick={async () => {
-                console.log('예약하기 버튼 클릭됨');
-                console.log('auth:', auth);
-                console.log('product:', product);
-                console.log('canEditProduct():', canEditProduct());
-                
-                if (confirm('이 상품을 예약하시겠습니까?')) {
-                  try {
-                    const { error } = await supabase
-                      .from('products')
-                      .update({ status: 'reserved' })
-                      .eq('id', product.id)
+            {/* 예약하기 버튼 (판매 상품, 판매중 상태, 구매자용) */}
+            {product.type === 'sale' && product.status === 'selling' && !canEditProduct() && auth.user && (
+              <button
+                onClick={async () => {
+                  if (confirm('이 상품을 예약하시겠습니까?')) {
+                    try {
+                      const { error } = await supabase
+                        .from('products')
+                        .update({ 
+                          status: 'reserved',
+                          reserved_by_id: auth.user?.id,
+                          reserved_by_name: auth.user?.name,
+                          reserved_by_phone: auth.user?.phone,
+                          reserved_at: new Date().toISOString()
+                        })
+                        .eq('id', product.id)
 
-                    if (error) {
-                      throw error
+                      if (error) {
+                        throw error
+                      }
+
+                      setProduct({ 
+                        ...product, 
+                        status: 'reserved',
+                        reserved_by_id: auth.user?.id,
+                        reserved_by_name: auth.user?.name,
+                        reserved_by_phone: auth.user?.phone,
+                        reserved_at: new Date().toISOString()
+                      })
+                      alert('상품이 예약되었습니다!')
+                    } catch (error) {
+                      console.error('Error reserving product:', error)
+                      alert('예약 중 오류가 발생했습니다.')
                     }
-
-                    setProduct({ ...product, status: 'reserved' })
-                    alert('상품이 예약되었습니다!')
-                  } catch (error) {
-                    console.error('Error reserving product:', error)
-                    alert('예약 중 오류가 발생했습니다.')
                   }
-                }
-              }}
-              className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
-            >
-              📝 예약하기 (디버그용)
-            </button>
+                }}
+                className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+              >
+                📝 예약하기
+              </button>
+            )}
+
+            {/* 예약 취소 버튼 (예약한 구매자 또는 판매자가 볼 수 있음) */}
+            {product.status === 'reserved' && auth.user && 
+             (auth.user.id === product.reserved_by_id || canEditProduct()) && (
+              <button
+                onClick={async () => {
+                  const isOwner = canEditProduct();
+                  const confirmMessage = isOwner 
+                    ? '예약을 취소하시겠습니까? 상품이 다시 판매중 상태가 됩니다.'
+                    : '예약을 취소하시겠습니까?';
+                    
+                  if (confirm(confirmMessage)) {
+                    try {
+                      const { error } = await supabase
+                        .from('products')
+                        .update({ 
+                          status: 'selling',
+                          reserved_by_id: undefined,
+                          reserved_by_name: undefined,
+                          reserved_by_phone: undefined,
+                          reserved_at: undefined
+                        })
+                        .eq('id', product.id)
+
+                      if (error) {
+                        throw error
+                      }
+
+                      setProduct({ 
+                        ...product, 
+                        status: 'selling',
+                        reserved_by_id: undefined,
+                        reserved_by_name: undefined,
+                        reserved_by_phone: undefined,
+                        reserved_at: undefined
+                      })
+                      alert('예약이 취소되었습니다.')
+                    } catch (error) {
+                      console.error('Error canceling reservation:', error)
+                      alert('예약 취소 중 오류가 발생했습니다.')
+                    }
+                  }
+                }}
+                className="flex-1 bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition-colors"
+              >
+                ❌ 예약 취소
+              </button>
+            )}
             
             {/* 상태 변경 버튼 (판매자/관리자만) */}
             {canEditProduct() && (
               <button
                 onClick={() => setShowStatusModal(true)}
-                className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                className="flex-1 bg-gray-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors"
               >
                 상태 변경
               </button>
-            )}
-            
-            {/* 연락하기 버튼 */}
-            {!canEditProduct() && (
-              <a
-                href={`tel:${product.contact}`}
-                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-center"
-              >
-                📞 연락하기
-              </a>
             )}
           </div>
         </div>
