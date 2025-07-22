@@ -586,7 +586,16 @@ export default function ProductDetailPage() {
             )}
             
             {/* 예약하기 버튼 (판매 상품, 판매중 상태, 구매자용) */}
-            {product.type === 'sale' && product.status === 'selling' && !canEditProduct() && (
+            {(() => {
+              console.log('Reserve button check:', {
+                type: product.type,
+                status: product.status,
+                canEdit: canEditProduct(),
+                sellerId: product.seller_id,
+                userId: auth.user?.id
+              });
+              return product.type === 'sale' && product.status === 'selling' && !canEditProduct();
+            })() && (
               <button
                 onClick={async () => {
                   if (confirm('이 상품을 예약하시겠습니까?')) {
