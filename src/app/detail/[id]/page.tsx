@@ -717,12 +717,15 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 나눔 신청 목록 (나눔 상품 판매자만 볼 수 있음) */}
-        {product.type === 'share' && canEditProduct() && (
+        {/* 나눔 신청 목록 (판매자는 모든 신청, 신청자는 본인 신청만 볼 수 있음) */}
+        {product.type === 'share' && (canEditProduct() || shareRequests.some(r => r.requester_id === auth.user?.id)) && (
           <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6 mb-6">
             <h3 className="font-semibold text-green-900 mb-4 flex items-center gap-2">
               <FiUser size={18} />
-              나눔 신청 목록 ({shareRequests.length}건)
+              {canEditProduct() 
+                ? `나눔 신청 목록 (${shareRequests.length}건)` 
+                : `내 나눔 신청 (${shareRequests.filter(r => r.requester_id === auth.user?.id).length}건)`
+              }
             </h3>
             
             {isLoadingShareRequests ? (
@@ -732,17 +735,21 @@ export default function ProductDetailPage() {
                   <p className="text-sm text-green-600">신청 목록을 불러오는 중...</p>
                 </div>
               </div>
-            ) : shareRequests.length === 0 ? (
+            ) : (canEditProduct() ? shareRequests : shareRequests.filter(r => r.requester_id === auth.user?.id)).length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-green-400 mb-2">
                   💝
                 </div>
-                <p className="text-green-700">아직 나눔 신청이 없습니다.</p>
-                <p className="text-sm text-green-600 mt-1">신청을 기다려보세요!</p>
+                <p className="text-green-700">
+                  {canEditProduct() ? '아직 나눔 신청이 없습니다.' : '나눔 신청 내역이 없습니다.'}
+                </p>
+                <p className="text-sm text-green-600 mt-1">
+                  {canEditProduct() ? '신청을 기다려보세요!' : '나눔 신청을 해보세요!'}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {shareRequests.map((request, index) => (
+                {(canEditProduct() ? shareRequests : shareRequests.filter(r => r.requester_id === auth.user?.id)).map((request, index) => (
                   <div key={request.id} className="bg-white rounded-lg border border-green-200 p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
