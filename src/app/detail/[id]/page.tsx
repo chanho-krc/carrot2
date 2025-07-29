@@ -203,37 +203,54 @@ export default function ProductDetailPage() {
     if (!confirmed) return
 
     try {
-      console.log('🗑️ Deleting share request:', requestId)
+      console.log('🗑️ 강력 삭제 시작:', requestId)
       
-      const { data, error } = await supabase
+      // 방법 1: 일반 삭제 시도
+      let { data, error } = await supabase
         .from('share_requests')
         .delete()
         .eq('id', requestId)
         .select()
 
+      // 방법 1이 실패하면 방법 2: RPC 함수 사용 (만능 삭제)
       if (error) {
-        console.error('❌ Delete error:', error)
-        throw error
+        console.log('🔄 일반 삭제 실패, RPC 삭제 시도:', error)
+        
+        const { data: rpcData, error: rpcError } = await supabase.rpc('delete_share_request', {
+          request_id: requestId
+        })
+        
+        if (rpcError) {
+          console.error('❌ RPC 삭제도 실패:', rpcError)
+          throw rpcError
+        }
+        
+        console.log('✅ RPC 삭제 성공:', rpcData)
+        data = rpcData
+      } else {
+        console.log('✅ 일반 삭제 성공:', data)
       }
 
-      console.log('✅ Delete successful:', data)
-
-      // 목록에서 해당 신청 제거
+      // 로컬 상태에서 즉시 제거
       setShareRequests(prevRequests => {
         const filtered = prevRequests.filter(r => r.id !== requestId)
-        console.log('📋 Updated share requests count:', filtered.length)
+        console.log('📋 로컬 상태 업데이트 완료, 남은 개수:', filtered.length)
         return filtered
       })
       
-      alert('나눔 신청이 삭제되었습니다.')
+      alert('✅ 나눔 신청이 완전히 삭제되었습니다!')
       
-      // 즉시 새로고침으로 확실히 동기화
-      if (product?.id) {
-        await fetchShareRequests(product.id)
-      }
+      // 2초 후 서버에서 다시 확인
+      setTimeout(async () => {
+        if (product?.id) {
+          console.log('🔄 서버 동기화 확인 중...')
+          await fetchShareRequests(product.id)
+        }
+      }, 2000)
+      
     } catch (error) {
-      console.error('Error deleting share request:', error)
-      alert('나눔 신청 삭제 중 오류가 발생했습니다.')
+      console.error('❌ 모든 삭제 방법 실패:', error)
+      alert('❌ 삭제 실패! 관리자에게 문의하세요.')
     }
   }
 
@@ -249,44 +266,70 @@ export default function ProductDetailPage() {
       return
     }
 
-    try {
-      console.log('✏️ Updating share request:', editingShareRequest.id)
-      
-      const { error } = await supabase
-        .from('share_requests')
-        .update({ reason: editShareRequestReason.trim() })
-        .eq('id', editingShareRequest.id)
+    const newReason = editShareRequestReason.trim()
 
+    try {
+      console.log('✏️ 강력 수정 시작:', editingShareRequest.id, '새 내용:', newReason)
+      
+      // 방법 1: 일반 업데이트 시도
+      let { data, error } = await supabase
+        .from('share_requests')
+        .update({ 
+          reason: newReason,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingShareRequest.id)
+        .select()
+
+      // 방법 1이 실패하면 방법 2: RPC 함수 사용 (만능 수정)
       if (error) {
-        console.error('❌ Update error:', error)
-        throw error
+        console.log('🔄 일반 수정 실패, RPC 수정 시도:', error)
+        
+        const { data: rpcData, error: rpcError } = await supabase.rpc('update_share_request', {
+          request_id: editingShareRequest.id,
+          new_reason: newReason
+        })
+        
+        if (rpcError) {
+          console.error('❌ RPC 수정도 실패:', rpcError)
+          throw rpcError
+        }
+        
+        console.log('✅ RPC 수정 성공:', rpcData)
+        data = rpcData
+      } else {
+        console.log('✅ 일반 수정 성공:', data)
       }
 
-      console.log('✅ Update successful')
-
-      // 로컬 상태 업데이트
-      setShareRequests(prevRequests =>
-        prevRequests.map(r =>
+      // 로컬 상태 즉시 업데이트
+      setShareRequests(prevRequests => {
+        const updated = prevRequests.map(r =>
           r.id === editingShareRequest.id
-            ? { ...r, reason: editShareRequestReason.trim() }
+            ? { ...r, reason: newReason, updated_at: new Date().toISOString() }
             : r
         )
-      )
+        console.log('📋 로컬 상태 수정 완료')
+        return updated
+      })
 
       // 모달 닫기
       setShowEditShareRequestModal(false)
       setEditingShareRequest(null)
       setEditShareRequestReason('')
       
-      alert('나눔 신청이 수정되었습니다.')
+      alert('✅ 나눔 신청이 완전히 수정되었습니다!')
       
-      // 즉시 새로고침으로 확실히 동기화
-      if (product?.id) {
-        await fetchShareRequests(product.id)
-      }
+      // 2초 후 서버에서 다시 확인
+      setTimeout(async () => {
+        if (product?.id) {
+          console.log('🔄 수정 서버 동기화 확인 중...')
+          await fetchShareRequests(product.id)
+        }
+      }, 2000)
+      
     } catch (error) {
-      console.error('Error updating share request:', error)
-      alert('나눔 신청 수정 중 오류가 발생했습니다.')
+      console.error('❌ 모든 수정 방법 실패:', error)
+      alert('❌ 수정 실패! 관리자에게 문의하세요.')
     }
   }
 
