@@ -271,8 +271,8 @@ export default function ProductDetailPage() {
         return
       }
 
-      if (!sellerData.notification_enabled || !sellerData.push_subscription) {
-        console.log('⚠️ 판매자가 푸시 알림을 비활성화했거나 구독하지 않음')
+      if (!sellerData.notification_enabled) {
+        console.log('⚠️ 판매자가 푸시 알림을 비활성화함')
         return
       }
 
@@ -289,55 +289,100 @@ export default function ProductDetailPage() {
         }
       }
 
-      // Supabase Edge Function 호출 (서버에서 푸시 알림 발송)
-      const { data, error } = await supabase.functions.invoke('send-push-notification', {
-        body: {
-          subscription: sellerData.push_subscription,
-          notification: notificationData
+      // 우선 브라우저 알림으로 시도
+      let notificationSent = false
+      
+      // 1. 브라우저 알림 시도 (즉시 표시)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(notificationData.title, {
+            body: notificationData.message,
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-72x72.png',
+            tag: `reservation-${productId}`,
+            data: notificationData.data,
+            requireInteraction: true
+          })
+          console.log('✅ 브라우저 알림 발송 성공')
+          notificationSent = true
+        } catch (browserError) {
+          console.error('❌ 브라우저 알림 발송 실패:', browserError)
         }
-      })
-
-      if (error) {
-        console.error('❌ 푸시 알림 발송 실패:', error)
-        // Edge Function이 없으면 브라우저 알림으로 대체
-        await sendBrowserNotification(sellerData, notificationData)
-      } else {
-        console.log('✅ 푸시 알림 발송 성공:', data)
       }
 
-      // 알림 로그 저장
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: sellerId,
-          type: 'reservation',
-          title: notificationData.title,
-          message: notificationData.message,
-          data: notificationData.data
-        })
+      // 2. Edge Function을 통한 푸시 알림 시도 (백그라운드)
+      if (sellerData.push_subscription) {
+        try {
+          const { data, error } = await supabase.functions.invoke('send-push-notification', {
+            body: {
+              subscription: sellerData.push_subscription,
+              notification: notificationData
+            }
+          })
+
+          if (error) {
+            console.log('⚠️ Edge Function 푸시 알림 실패 (정상적임):', error.message)
+          } else {
+            console.log('✅ Edge Function 푸시 알림 발송 성공:', data)
+            notificationSent = true
+          }
+        } catch (edgeError) {
+          console.log('⚠️ Edge Function 호출 실패 (정상적임):', edgeError)
+        }
+      }
+
+      // 3. Service Worker를 통한 로컬 알림 시도
+      if (!notificationSent && 'serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready
+          await registration.showNotification(notificationData.title, {
+            body: notificationData.message,
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-72x72.png',
+            tag: `reservation-${productId}`,
+            data: notificationData.data,
+            actions: [
+              { action: 'view', title: '상품 보기' },
+              { action: 'close', title: '닫기' }
+            ],
+            requireInteraction: true,
+            vibrate: [200, 100, 200]
+          })
+          console.log('✅ Service Worker 알림 발송 성공')
+          notificationSent = true
+        } catch (swError) {
+          console.error('❌ Service Worker 알림 발송 실패:', swError)
+        }
+      }
+
+      // 알림 로그 저장 (선택사항)
+      try {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: sellerId,
+            type: 'reservation',
+            title: notificationData.title,
+            message: notificationData.message,
+            data: notificationData.data,
+            sent_at: new Date().toISOString()
+          })
+      } catch (logError) {
+        console.log('알림 로그 저장 실패 (무시 가능):', logError)
+      }
+
+      if (notificationSent) {
+        console.log('✅ 예약 알림 발송 완료')
+      } else {
+        console.log('⚠️ 모든 알림 방법 실패, 판매자가 알림을 확인하지 못할 수 있음')
+      }
 
     } catch (error) {
       console.error('❌ 알림 발송 중 오류:', error)
     }
   }
 
-  const sendBrowserNotification = async (sellerData: any, notificationData: any) => {
-    try {
-      // 브라우저 알림 대체 (Edge Function이 없을 때)
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(notificationData.title, {
-          body: notificationData.message,
-          icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-72x72.png',
-          tag: `reservation-${notificationData.data.productId}`,
-          data: notificationData.data
-        })
-        console.log('✅ 브라우저 알림 발송 완료')
-      }
-    } catch (error) {
-      console.error('❌ 브라우저 알림 발송 실패:', error)
-    }
-  }
+
 
   const handleEditShareRequest = (request: ShareRequest) => {
     setEditingShareRequest(request)

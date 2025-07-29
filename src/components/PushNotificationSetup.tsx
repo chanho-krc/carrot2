@@ -67,11 +67,17 @@ export default function PushNotificationSetup({ className = '' }: PushNotificati
       // Service Worker 등록
       const registration = await navigator.serviceWorker.ready
       
-      // 푸시 구독
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      })
+      // 푸시 구독 (VAPID 키가 없어도 브라우저 알림은 가능)
+      let subscription = null
+      try {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        })
+      } catch (vapidError) {
+        console.log('VAPID 푸시 구독 실패, 기본 알림으로 대체:', vapidError)
+        // VAPID 키가 없어도 브라우저 알림은 설정 가능
+      }
 
       // Supabase에 구독 정보 저장
       const auth = getAuthFromStorage()
@@ -79,7 +85,7 @@ export default function PushNotificationSetup({ className = '' }: PushNotificati
         const { error } = await supabase
           .from('users')
           .update({
-            push_subscription: subscription.toJSON(),
+            push_subscription: subscription ? subscription.toJSON() : null,
             notification_enabled: true
           })
           .eq('id', auth.user.id)
@@ -91,11 +97,11 @@ export default function PushNotificationSetup({ className = '' }: PushNotificati
 
         console.log('✅ 푸시 알림 구독 완료:', subscription)
         setIsSubscribed(true)
-        alert('🔔 푸시 알림이 활성화되었습니다! 이제 예약 알림을 받을 수 있습니다.')
+        alert('🔔 예약 알림이 활성화되었습니다!\n이제 상품 예약 알림을 받을 수 있습니다.')
       }
     } catch (error) {
       console.error('푸시 구독 오류:', error)
-      alert('푸시 알림 설정 중 오류가 발생했습니다.')
+      alert('알림 설정 중 오류가 발생했습니다.')
     } finally {
       setIsLoading(false)
     }
@@ -130,11 +136,11 @@ export default function PushNotificationSetup({ className = '' }: PushNotificati
 
         console.log('✅ 푸시 알림 구독 해제 완료')
         setIsSubscribed(false)
-        alert('🔕 푸시 알림이 비활성화되었습니다.')
+        alert('🔕 예약 알림이 비활성화되었습니다.')
       }
     } catch (error) {
       console.error('푸시 구독 해제 오류:', error)
-      alert('푸시 알림 해제 중 오류가 발생했습니다.')
+      alert('알림 해제 중 오류가 발생했습니다.')
     } finally {
       setIsLoading(false)
     }
@@ -152,7 +158,7 @@ export default function PushNotificationSetup({ className = '' }: PushNotificati
             <button
               onClick={unsubscribeFromPush}
               disabled={isLoading}
-              className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 whitespace-nowrap"
               title="푸시 알림 끄기"
             >
               <FiBellOff size={16} />
@@ -162,7 +168,7 @@ export default function PushNotificationSetup({ className = '' }: PushNotificati
             <button
               onClick={subscribeToPush}
               disabled={isLoading}
-              className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 whitespace-nowrap"
               title="푸시 알림 켜기"
             >
               <FiBell size={16} />
@@ -174,11 +180,11 @@ export default function PushNotificationSetup({ className = '' }: PushNotificati
         <button
           onClick={subscribeToPush}
           disabled={isLoading}
-          className="flex items-center gap-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors disabled:opacity-50 whitespace-nowrap"
           title="예약 알림 받기"
         >
-          <FiBell size={16} />
-          {isLoading ? '설정중...' : '📱 예약 알림 받기'}
+          <FiBell size={14} />
+          {isLoading ? '설정중...' : '예약알림받기'}
         </button>
       )}
     </div>
