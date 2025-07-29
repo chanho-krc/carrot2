@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { FiArrowLeft, FiPhone, FiUser, FiCalendar, FiEdit3, FiTrash2, FiEye, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
-import { Product, AuthState, ProductStatus } from '@/types'
+import { Product, AuthState, ProductStatus, ShareRequest } from '@/types'
 
 export default function ProductDetailPage() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
@@ -18,6 +18,8 @@ export default function ProductDetailPage() {
   const [showImageModal, setShowImageModal] = useState(false)
   const [showShareRequestModal, setShowShareRequestModal] = useState(false)
   const [shareRequestReason, setShareRequestReason] = useState('')
+  const [shareRequests, setShareRequests] = useState<ShareRequest[]>([])
+  const [isLoadingShareRequests, setIsLoadingShareRequests] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [mouseStart, setMouseStart] = useState<number | null>(null)
@@ -156,11 +158,38 @@ export default function ProductDetailPage() {
 
       console.log('🔍 Product data fetched:', data)
       setProduct(data)
+      
+      // 나눔 상품인 경우 나눔 신청 목록도 가져오기
+      if (data.type === 'share') {
+        fetchShareRequests(id)
+      }
     } catch (error) {
       console.error('Error fetching product:', error)
       setError('상품을 불러오는 중 오류가 발생했습니다.')
     } finally {
       setIsLoading(false)
+    }
+  }, [])
+
+  const fetchShareRequests = useCallback(async (productId: string) => {
+    try {
+      setIsLoadingShareRequests(true)
+      
+      const { data, error } = await supabase
+        .from('share_requests')
+        .select('*')
+        .eq('product_id', productId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      setShareRequests(data || [])
+    } catch (error) {
+      console.error('Error fetching share requests:', error)
+    } finally {
+      setIsLoadingShareRequests(false)
     }
   }, [])
 
@@ -257,6 +286,11 @@ export default function ProductDetailPage() {
       alert('나눔 신청이 완료되었습니다!')
       setShowShareRequestModal(false)
       setShareRequestReason('')
+      
+      // 나눔 신청 목록 새로고침
+      if (product?.id) {
+        fetchShareRequests(product.id)
+      }
     } catch (error) {
       console.error('Error submitting share request:', error)
       alert('나눔 신청 중 오류가 발생했습니다.')
@@ -654,6 +688,69 @@ export default function ProductDetailPage() {
                 💡 예약자에게 직접 연락하여 거래를 진행하세요.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* 나눔 신청 목록 (나눔 상품 판매자만 볼 수 있음) */}
+        {product.type === 'share' && canEditProduct() && (
+          <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6 mb-6">
+            <h3 className="font-semibold text-green-900 mb-4 flex items-center gap-2">
+              <FiUser size={18} />
+              나눔 신청 목록 ({shareRequests.length}건)
+            </h3>
+            
+            {isLoadingShareRequests ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-green-600">신청 목록을 불러오는 중...</p>
+                </div>
+              </div>
+            ) : shareRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-green-400 mb-2">
+                  💝
+                </div>
+                <p className="text-green-700">아직 나눔 신청이 없습니다.</p>
+                <p className="text-sm text-green-600 mt-1">신청을 기다려보세요!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {shareRequests.map((request, index) => (
+                  <div key={request.id} className="bg-white rounded-lg border border-green-200 p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                          #{index + 1}
+                        </span>
+                        <span className="font-medium text-gray-900">{request.requester_name}</span>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(request.created_at).toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-sm text-gray-600 font-medium mb-1">신청 사연:</p>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                        {request.reason}
+                      </p>
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500">
+                        💡 마음에 드는 신청자에게 직접 연락하여 나눔을 진행하세요.
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
