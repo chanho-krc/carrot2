@@ -23,6 +23,7 @@ export default function ProductDetailPage() {
   const [showEditShareRequestModal, setShowEditShareRequestModal] = useState(false)
   const [editingShareRequest, setEditingShareRequest] = useState<ShareRequest | null>(null)
   const [editShareRequestReason, setEditShareRequestReason] = useState('')
+  const [isSelectingApplicant, setIsSelectingApplicant] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [mouseStart, setMouseStart] = useState<number | null>(null)
@@ -417,6 +418,105 @@ export default function ProductDetailPage() {
     }
   }
 
+  // 나눔 신청자 선택 함수
+  const handleSelectApplicant = async (shareRequestId: string, requesterName: string) => {
+    if (!product?.id) return
+
+    const confirmed = window.confirm(
+      `${requesterName}님을 나눔 받을 분으로 선택하시겠습니까?\n\n선택하시면 거래가 완료되고, 다른 신청자들에게는 안내가 됩니다.`
+    )
+    
+    if (!confirmed) return
+
+    try {
+      setIsSelectingApplicant(true)
+      console.log('🎯 나눔 신청자 선택 시작:', shareRequestId, requesterName)
+
+      const { data, error } = await supabase.rpc('select_share_applicant', {
+        product_id_param: product.id,
+        share_request_id_param: shareRequestId
+      })
+
+      if (error) {
+        console.error('❌ 신청자 선택 실패:', error)
+        throw error
+      }
+
+      console.log('✅ 신청자 선택 성공:', data)
+
+      // 상품 상태 업데이트
+      setProduct(prev => prev ? {
+        ...prev,
+        status: 'completed',
+        selected_share_request_id: shareRequestId,
+        completed_at: new Date().toISOString()
+      } : null)
+
+      alert(`✅ ${requesterName}님이 선택되어 거래가 완료되었습니다!`)
+
+      // 신청서 목록 새로고침
+      if (product?.id) {
+        await fetchShareRequests(product.id)
+        await fetchProduct(product.id)
+      }
+
+    } catch (error) {
+      console.error('❌ 신청자 선택 중 오류:', error)
+      alert('❌ 신청자 선택 중 오류가 발생했습니다. 다시 시도해주세요.')
+    } finally {
+      setIsSelectingApplicant(false)
+    }
+  }
+
+  // 나눔 신청자 선택 취소 함수
+  const handleUnselectApplicant = async () => {
+    if (!product?.id) return
+
+    const confirmed = window.confirm(
+      '선택을 취소하고 다시 나눔을 진행하시겠습니까?\n\n다른 신청자들이 다시 신청할 수 있게 됩니다.'
+    )
+    
+    if (!confirmed) return
+
+    try {
+      setIsSelectingApplicant(true)
+      console.log('🔄 나눔 선택 취소 시작:', product.id)
+
+      const { data, error } = await supabase.rpc('unselect_share_applicant', {
+        product_id_param: product.id
+      })
+
+      if (error) {
+        console.error('❌ 선택 취소 실패:', error)
+        throw error
+      }
+
+      console.log('✅ 선택 취소 성공:', data)
+
+      // 상품 상태 업데이트
+      setProduct(prev => prev ? {
+        ...prev,
+        status: 'share',
+        selected_share_request_id: undefined,
+        completed_at: undefined
+      } : null)
+
+      alert('✅ 선택이 취소되어 다시 나눔 중으로 변경되었습니다!')
+
+      // 신청서 목록 새로고침
+      if (product?.id) {
+        await fetchShareRequests(product.id)
+        await fetchProduct(product.id)
+      }
+
+    } catch (error) {
+      console.error('❌ 선택 취소 중 오류:', error)
+      alert('❌ 선택 취소 중 오류가 발생했습니다. 다시 시도해주세요.')
+    } finally {
+      setIsSelectingApplicant(false)
+    }
+  }
+
   // 페이지 포커스 시 나눔 신청 목록 새로고침 (실시간 동기화)
   useEffect(() => {
     const handleFocus = () => {
@@ -792,10 +892,14 @@ export default function ProductDetailPage() {
                 <span className={`px-2 py-1 rounded-full text-sm font-medium ${
                   product.status === 'selling' ? 'bg-green-100 text-green-700' :
                   product.status === 'reserved' ? 'bg-yellow-100 text-yellow-700' :
+                  product.status === 'share' ? 'bg-blue-100 text-blue-700' :
+                  product.status === 'completed' ? 'bg-purple-100 text-purple-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
                   {product.status === 'selling' ? '판매중' :
-                   product.status === 'reserved' ? '예약중' : '판매완료'}
+                   product.status === 'reserved' ? '예약중' :
+                   product.status === 'share' ? '나눔중' :
+                   product.status === 'completed' ? '거래완료' : '판매완료'}
                 </span>
               </div>
             </div>
@@ -1000,11 +1104,68 @@ export default function ProductDetailPage() {
                       </p>
                     </div>
                     
+                    {/* 선택된 신청자 표시 */}
+                    {product.selected_share_request_id === request.id && (
+                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="text-yellow-600">
+                            🎉
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-yellow-800">선택된 신청자</p>
+                            <p className="text-xs text-yellow-700">이분이 나눔을 받기로 선택되었습니다!</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs text-gray-500">
-                          💡 마음에 드는 신청자에게 직접 연락하여 나눔을 진행하세요.
-                        </p>
+                        {/* 판매자용 안내 메시지와 선택 버튼 */}
+                        {canEditProduct() ? (
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex-1">
+                              {product.status === 'completed' ? (
+                                <p className="text-xs text-green-600">
+                                  ✅ 거래가 완료되었습니다. 선택을 변경하려면 아래 버튼을 눌러주세요.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-gray-500">
+                                  💡 마음에 드는 신청자를 선택하여 거래를 완료하세요.
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 ml-2">
+                              {/* 선택/선택 취소 버튼 */}
+                              {product.selected_share_request_id === request.id ? (
+                                <button
+                                  onClick={handleUnselectApplicant}
+                                  disabled={isSelectingApplicant}
+                                  className="text-orange-600 hover:text-orange-700 text-xs px-3 py-1 border border-orange-300 rounded hover:bg-orange-50 transition-colors disabled:opacity-50"
+                                  title="선택 취소"
+                                >
+                                  {isSelectingApplicant ? '처리중...' : '선택 취소'}
+                                </button>
+                              ) : (
+                                product.status !== 'completed' && (
+                                  <button
+                                    onClick={() => handleSelectApplicant(request.id, request.requester_name)}
+                                    disabled={isSelectingApplicant}
+                                    className="text-green-600 hover:text-green-700 text-xs px-3 py-1 border border-green-300 rounded hover:bg-green-50 transition-colors disabled:opacity-50"
+                                    title="이 신청자 선택"
+                                  >
+                                    {isSelectingApplicant ? '처리중...' : '선택하기'}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500">
+                            💡 판매자가 신청을 검토 중입니다.
+                          </p>
+                        )}
+                        
                         <div className="flex items-center gap-1">
                           {/* 수정 버튼: 신청자는 본인 신청만 수정 가능 */}
                           {auth.user?.id === request.requester_id && (
@@ -1040,13 +1201,21 @@ export default function ProductDetailPage() {
         <div className="bg-white border-t p-6 sticky bottom-0">
           <div className="flex gap-3">
             {/* 나눔 신청 버튼 (나눔 상품만) */}
-            {product.type === 'share' && product.status === 'selling' && !canEditProduct() && (
+            {product.type === 'share' && (product.status === 'selling' || product.status === 'share') && !canEditProduct() && (
               <button
                 onClick={() => setShowShareRequestModal(true)}
                 className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors"
               >
                 💝 나눔 신청하기
               </button>
+            )}
+
+            {/* 거래 완료된 나눔 상품 안내 */}
+            {product.type === 'share' && product.status === 'completed' && !canEditProduct() && (
+              <div className="flex-1 bg-purple-50 border border-purple-200 py-3 px-4 rounded-lg text-center">
+                <p className="text-purple-700 font-medium">🎉 나눔이 완료되었습니다</p>
+                <p className="text-purple-600 text-sm mt-1">다른 분이 나눔을 받으셨습니다</p>
+              </div>
             )}
             
             {/* 예약하기 버튼 - 판매 상품을 구매자가 예약할 때 (판매자 본인 제외) */}

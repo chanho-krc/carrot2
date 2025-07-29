@@ -16,7 +16,7 @@ export interface Product {
   contact: string
   seller_name: string
   seller_id: string
-  status: 'selling' | 'reserved' | 'sold'
+  status: 'selling' | 'reserved' | 'sold' | 'share' | 'completed'
   type: 'sale' | 'share' | 'wanted' // 판매/나눔/구하기 구분
   category: string // 카테고리
   images: string[]
@@ -27,6 +27,9 @@ export interface Product {
   reserved_by_name?: string
   reserved_by_phone?: string
   reserved_at?: string
+  // 나눔 선택자 정보
+  selected_share_request_id?: string
+  completed_at?: string
   created_at: string
   updated_at: string
 }
@@ -39,6 +42,7 @@ export interface ShareRequest {
   requester_id: string
   reason: string // 신청 사연
   created_at: string
+  updated_at?: string
 }
 
 export interface AuthState {
@@ -47,5 +51,5 @@ export interface AuthState {
   isLoading: boolean
 }
 
-export type ProductStatus = 'selling' | 'reserved' | 'sold'
+export type ProductStatus = 'selling' | 'reserved' | 'sold' | 'share' | 'completed'
 export type ProductType = 'sale' | 'share' | 'wanted' 
