@@ -7,6 +7,7 @@ import { FiHome, FiPlus, FiUser, FiSettings, FiLogOut } from 'react-icons/fi'
 import { getAuthFromStorage, logout } from '@/lib/auth'
 import { AuthState } from '@/types'
 import PWAInstallPrompt from './PWAInstallPrompt'
+import PushNotificationSetup from './PushNotificationSetup'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -42,7 +43,8 @@ export default function Layout({ children }: LayoutProps) {
                 🥕 KRC 당근
               </Link>
               {isAuthenticated && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <PushNotificationSetup />
                   <span className="text-sm text-gray-600">
                     {auth.isAdmin ? '관리자' : auth.user?.name}
                   </span>

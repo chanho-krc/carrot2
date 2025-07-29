@@ -104,34 +104,97 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// 푸시 알림 (선택사항)
+// 푸시 알림 수신 및 처리
 self.addEventListener('push', (event) => {
-  console.log('Push event received');
+  console.log('📱 푸시 알림 수신:', event);
   
-  const title = 'KRC 당근';
+  let notificationData = {
+    title: 'KRC 당근',
+    body: '새로운 소식이 있습니다!',
+    data: {}
+  };
+
+  // 푸시 데이터 파싱
+  if (event.data) {
+    try {
+      notificationData = event.data.json();
+      console.log('📱 푸시 데이터:', notificationData);
+    } catch (error) {
+      console.log('📱 텍스트 푸시 데이터:', event.data.text());
+      notificationData.body = event.data.text();
+    }
+  }
+  
   const options = {
-    body: event.data ? event.data.text() : '새로운 소식이 있습니다!',
+    body: notificationData.message || notificationData.body,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    }
+    tag: notificationData.data?.type || 'general',
+    data: notificationData.data || {},
+    actions: [
+      {
+        action: 'view',
+        title: '상품 보기',
+        icon: '/icons/icon-72x72.png'
+      },
+      {
+        action: 'close',
+        title: '닫기'
+      }
+    ],
+    requireInteraction: true,
+    vibrate: [200, 100, 200],
+    silent: false
   };
 
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration.showNotification(
+      notificationData.title || 'KRC 당근',
+      options
+    )
   );
 });
 
-// 알림 클릭 이벤트
+// 알림 클릭 이벤트 처리
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification click received');
+  console.log('📱 알림 클릭:', event);
   
   event.notification.close();
   
-  event.waitUntil(
-    clients.openWindow('/')
-  );
+  const notificationData = event.notification.data || {};
+  
+  if (event.action === 'view') {
+    // 상품 상세 페이지로 이동
+    const productId = notificationData.productId;
+    const targetUrl = productId ? `/detail/${productId}` : '/';
+    
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then((clientList) => {
+        // 기존 창이 있으면 포커스하고 해당 페이지로 이동
+        for (let client of clientList) {
+          if (client.url === self.registration.scope) {
+            client.navigate(targetUrl);
+            return client.focus();
+          }
+        }
+        // 새 창 열기
+        return clients.openWindow(targetUrl);
+      })
+    );
+  } else if (event.action === 'close') {
+    // 알림 닫기만
+    console.log('알림 닫기');
+  } else {
+    // 기본 클릭 동작 (앱 열기)
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then((clientList) => {
+        if (clientList.length > 0) {
+          // 기존 창이 있으면 포커스
+          return clientList[0].focus();
+        }
+        // 새 창 열기
+        return clients.openWindow('/');
+      })
+    );
+  }
 }); 
