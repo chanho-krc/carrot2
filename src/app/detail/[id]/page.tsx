@@ -134,6 +134,8 @@ export default function ProductDetailPage() {
     }
   }, [showImageModal])
 
+
+
   const fetchProduct = useCallback(async (id: string) => {
     try {
       setIsLoading(true)
@@ -213,11 +215,41 @@ export default function ProductDetailPage() {
       )
       
       alert('나눔 신청이 삭제되었습니다.')
+      
+      // 3초 후 다른 사용자들도 업데이트를 볼 수 있도록 새로고침
+      setTimeout(() => {
+        if (product?.id) {
+          fetchShareRequests(product.id)
+        }
+      }, 3000)
     } catch (error) {
       console.error('Error deleting share request:', error)
       alert('나눔 신청 삭제 중 오류가 발생했습니다.')
     }
   }
+
+  // 페이지 포커스 시 나눔 신청 목록 새로고침 (실시간 동기화)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (product?.type === 'share' && product?.id) {
+        fetchShareRequests(product.id)
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && product?.type === 'share' && product?.id) {
+        fetchShareRequests(product.id)
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [product?.id, product?.type, fetchShareRequests])
 
   const goToPreviousImage = () => {
     if (product?.images && currentImageIndex > 0) {
