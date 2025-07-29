@@ -20,6 +20,9 @@ export default function ProductDetailPage() {
   const [shareRequestReason, setShareRequestReason] = useState('')
   const [shareRequests, setShareRequests] = useState<ShareRequest[]>([])
   const [isLoadingShareRequests, setIsLoadingShareRequests] = useState(false)
+  const [showEditShareRequestModal, setShowEditShareRequestModal] = useState(false)
+  const [editingShareRequest, setEditingShareRequest] = useState<ShareRequest | null>(null)
+  const [editShareRequestReason, setEditShareRequestReason] = useState('')
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [mouseStart, setMouseStart] = useState<number | null>(null)
@@ -200,31 +203,90 @@ export default function ProductDetailPage() {
     if (!confirmed) return
 
     try {
-      const { error } = await supabase
+      console.log('🗑️ Deleting share request:', requestId)
+      
+      const { data, error } = await supabase
         .from('share_requests')
         .delete()
         .eq('id', requestId)
+        .select()
 
       if (error) {
+        console.error('❌ Delete error:', error)
         throw error
       }
 
+      console.log('✅ Delete successful:', data)
+
       // 목록에서 해당 신청 제거
-      setShareRequests(prevRequests => 
-        prevRequests.filter(r => r.id !== requestId)
-      )
+      setShareRequests(prevRequests => {
+        const filtered = prevRequests.filter(r => r.id !== requestId)
+        console.log('📋 Updated share requests count:', filtered.length)
+        return filtered
+      })
       
       alert('나눔 신청이 삭제되었습니다.')
       
-      // 3초 후 다른 사용자들도 업데이트를 볼 수 있도록 새로고침
-      setTimeout(() => {
-        if (product?.id) {
-          fetchShareRequests(product.id)
-        }
-      }, 3000)
+      // 즉시 새로고침으로 확실히 동기화
+      if (product?.id) {
+        await fetchShareRequests(product.id)
+      }
     } catch (error) {
       console.error('Error deleting share request:', error)
       alert('나눔 신청 삭제 중 오류가 발생했습니다.')
+    }
+  }
+
+  const handleEditShareRequest = (request: ShareRequest) => {
+    setEditingShareRequest(request)
+    setEditShareRequestReason(request.reason)
+    setShowEditShareRequestModal(true)
+  }
+
+  const handleUpdateShareRequest = async () => {
+    if (!editingShareRequest || !editShareRequestReason.trim()) {
+      alert('수정할 내용을 입력해주세요.')
+      return
+    }
+
+    try {
+      console.log('✏️ Updating share request:', editingShareRequest.id)
+      
+      const { error } = await supabase
+        .from('share_requests')
+        .update({ reason: editShareRequestReason.trim() })
+        .eq('id', editingShareRequest.id)
+
+      if (error) {
+        console.error('❌ Update error:', error)
+        throw error
+      }
+
+      console.log('✅ Update successful')
+
+      // 로컬 상태 업데이트
+      setShareRequests(prevRequests =>
+        prevRequests.map(r =>
+          r.id === editingShareRequest.id
+            ? { ...r, reason: editShareRequestReason.trim() }
+            : r
+        )
+      )
+
+      // 모달 닫기
+      setShowEditShareRequestModal(false)
+      setEditingShareRequest(null)
+      setEditShareRequestReason('')
+      
+      alert('나눔 신청이 수정되었습니다.')
+      
+      // 즉시 새로고침으로 확실히 동기화
+      if (product?.id) {
+        await fetchShareRequests(product.id)
+      }
+    } catch (error) {
+      console.error('Error updating share request:', error)
+      alert('나눔 신청 수정 중 오류가 발생했습니다.')
     }
   }
 
@@ -807,20 +869,34 @@ export default function ProductDetailPage() {
                       </p>
                     </div>
                     
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                      <p className="text-xs text-gray-500">
-                        💡 마음에 드는 신청자에게 직접 연락하여 나눔을 진행하세요.
-                      </p>
-                      {/* 삭제 버튼: 판매자는 모든 신청 삭제 가능, 신청자는 본인 신청만 삭제 가능 */}
-                      {(canEditProduct() || auth.user?.id === request.requester_id) && (
-                        <button
-                          onClick={() => handleDeleteShareRequest(request.id, request.requester_name)}
-                          className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
-                          title="신청 삭제"
-                        >
-                          <FiTrash2 size={12} />
-                        </button>
-                      )}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                          💡 마음에 드는 신청자에게 직접 연락하여 나눔을 진행하세요.
+                        </p>
+                        <div className="flex items-center gap-1">
+                          {/* 수정 버튼: 신청자는 본인 신청만 수정 가능 */}
+                          {auth.user?.id === request.requester_id && (
+                            <button
+                              onClick={() => handleEditShareRequest(request)}
+                              className="text-blue-500 hover:text-blue-700 text-xs px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                              title="신청 수정"
+                            >
+                              <FiEdit3 size={12} />
+                            </button>
+                          )}
+                          {/* 삭제 버튼: 판매자는 모든 신청 삭제 가능, 신청자는 본인 신청만 삭제 가능 */}
+                          {(canEditProduct() || auth.user?.id === request.requester_id) && (
+                            <button
+                              onClick={() => handleDeleteShareRequest(request.id, request.requester_name)}
+                              className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                              title="신청 삭제"
+                            >
+                              <FiTrash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1013,6 +1089,45 @@ export default function ProductDetailPage() {
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
                 신청하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 나눔 신청 수정 모달 */}
+      {showEditShareRequestModal && editingShareRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold mb-4">나눔 신청 수정</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                신청 사연 수정
+              </label>
+              <textarea
+                value={editShareRequestReason}
+                onChange={(e) => setEditShareRequestReason(e.target.value)}
+                rows={4}
+                placeholder="나눔을 받고 싶은 이유나 사연을 적어주세요..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowEditShareRequestModal(false)
+                  setEditingShareRequest(null)
+                  setEditShareRequestReason('')
+                }}
+                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleUpdateShareRequest}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                수정완료
               </button>
             </div>
           </div>
