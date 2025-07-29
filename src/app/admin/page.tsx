@@ -56,19 +56,31 @@ export default function AdminDashboard() {
         throw usersError
       }
 
-      // 나눔 신청 데이터 가져오기
+      // 나눔 신청 데이터 가져오기 (조인 없이)
       const { data: shareRequestsData, error: shareRequestsError } = await supabase
         .from('share_requests')
-        .select(`
-          *,
-          products (
-            id,
-            title,
-            seller_name,
-            images
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
+
+      let enrichedShareRequests: any[] = []
+      
+      if (shareRequestsData && !shareRequestsError) {
+        // 각 나눔 신청에 대해 상품 정보를 별도로 가져오기
+        enrichedShareRequests = await Promise.all(
+          shareRequestsData.map(async (request: any) => {
+            const { data: productData } = await supabase
+              .from('products')
+              .select('id, title, seller_name, images')
+              .eq('id', request.product_id)
+              .single()
+            
+            return {
+              ...request,
+              products: productData
+            }
+          })
+        )
+      }
 
       if (shareRequestsError) {
         console.error('Error fetching share requests:', shareRequestsError)
@@ -77,7 +89,7 @@ export default function AdminDashboard() {
 
       setProducts(productsData || [])
       setUsers(usersData || [])
-      setShareRequests(shareRequestsData || [])
+      setShareRequests(enrichedShareRequests || [])
     } catch (error) {
       setError('데이터를 불러오는 중 오류가 발생했습니다.')
       console.error('Error fetching data:', error)

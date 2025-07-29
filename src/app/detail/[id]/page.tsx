@@ -193,6 +193,32 @@ export default function ProductDetailPage() {
     }
   }, [])
 
+  const handleDeleteShareRequest = async (requestId: string, requesterName: string) => {
+    const confirmed = window.confirm(`"${requesterName}"님의 나눔 신청을 삭제하시겠습니까?`)
+    if (!confirmed) return
+
+    try {
+      const { error } = await supabase
+        .from('share_requests')
+        .delete()
+        .eq('id', requestId)
+
+      if (error) {
+        throw error
+      }
+
+      // 목록에서 해당 신청 제거
+      setShareRequests(prevRequests => 
+        prevRequests.filter(r => r.id !== requestId)
+      )
+      
+      alert('나눔 신청이 삭제되었습니다.')
+    } catch (error) {
+      console.error('Error deleting share request:', error)
+      alert('나눔 신청 삭제 중 오류가 발생했습니다.')
+    }
+  }
+
   const goToPreviousImage = () => {
     if (product?.images && currentImageIndex > 0) {
       setCurrentImageIndex(currentImageIndex - 1)
@@ -742,10 +768,20 @@ export default function ProductDetailPage() {
                       </p>
                     </div>
                     
-                    <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
                       <p className="text-xs text-gray-500">
                         💡 마음에 드는 신청자에게 직접 연락하여 나눔을 진행하세요.
                       </p>
+                      {/* 삭제 버튼: 판매자는 모든 신청 삭제 가능, 신청자는 본인 신청만 삭제 가능 */}
+                      {(canEditProduct() || auth.user?.id === request.requester_id) && (
+                        <button
+                          onClick={() => handleDeleteShareRequest(request.id, request.requester_name)}
+                          className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                          title="신청 삭제"
+                        >
+                          <FiTrash2 size={12} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
