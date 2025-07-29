@@ -201,6 +201,10 @@ export default function AdminDashboard() {
         return '예약됨'
       case 'sold':
         return '거래완료'
+      case 'share':
+        return '나눔중'
+      case 'completed':
+        return '거래완료'
       default:
         return status
     }
@@ -214,6 +218,10 @@ export default function AdminDashboard() {
         return 'bg-yellow-100 text-yellow-800'
       case 'sold':
         return 'bg-gray-100 text-gray-800'
+      case 'share':
+        return 'bg-blue-100 text-blue-800'
+      case 'completed':
+        return 'bg-purple-100 text-purple-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
