@@ -3,21 +3,22 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { FiUsers, FiPackage, FiBarChart, FiEye, FiEdit3, FiTrash2, FiUser, FiCalendar } from 'react-icons/fi'
+import { FiUsers, FiPackage, FiBarChart, FiEye, FiEdit3, FiTrash2, FiUser, FiCalendar, FiHeart } from 'react-icons/fi'
 import { getAuthFromStorage } from '@/lib/auth'
-import { Product, User, AuthState, ProductStatus } from '@/types'
+import { Product, User, AuthState, ProductStatus, ShareRequest } from '@/types'
 import { supabase } from '@/lib/supabase'
 
 export default function AdminDashboard() {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAdmin: false, isLoading: true })
   const [products, setProducts] = useState<Product[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [shareRequests, setShareRequests] = useState<ShareRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus>('selling')
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'users'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'users' | 'shareRequests'>('overview')
   const router = useRouter()
 
   useEffect(() => {
@@ -55,8 +56,28 @@ export default function AdminDashboard() {
         throw usersError
       }
 
+      // 나눔 신청 데이터 가져오기
+      const { data: shareRequestsData, error: shareRequestsError } = await supabase
+        .from('share_requests')
+        .select(`
+          *,
+          products (
+            id,
+            title,
+            seller_name,
+            images
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      if (shareRequestsError) {
+        console.error('Error fetching share requests:', shareRequestsError)
+        // 나눔 신청 데이터 오류는 전체 로딩을 중단하지 않음
+      }
+
       setProducts(productsData || [])
       setUsers(usersData || [])
+      setShareRequests(shareRequestsData || [])
     } catch (error) {
       setError('데이터를 불러오는 중 오류가 발생했습니다.')
       console.error('Error fetching data:', error)
@@ -124,6 +145,32 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleDeleteShareRequest = async (requestId: string) => {
+    const confirmed = window.confirm('정말로 이 나눔 신청을 삭제하시겠습니까?\n삭제된 신청은 복구할 수 없습니다.')
+    if (!confirmed) return
+
+    try {
+      const { error } = await supabase
+        .from('share_requests')
+        .delete()
+        .eq('id', requestId)
+
+      if (error) {
+        throw error
+      }
+
+      // 나눔 신청 목록에서 해당 신청 제거
+      setShareRequests(prevRequests =>
+        prevRequests.filter(r => r.id !== requestId)
+      )
+      
+      alert('나눔 신청이 성공적으로 삭제되었습니다.')
+    } catch (error) {
+      setError('나눔 신청 삭제 중 오류가 발생했습니다.')
+      console.error('Error deleting share request:', error)
+    }
+  }
+
   const openStatusModal = (product: Product) => {
     setSelectedProduct(product)
     setSelectedStatus(product.status)
@@ -177,7 +224,16 @@ export default function AdminDashboard() {
       }).length
     }
 
-    return { productStats, userStats }
+    const shareRequestStats = {
+      total: shareRequests.length,
+      thisMonth: shareRequests.filter(r => {
+        const created = new Date(r.created_at)
+        const now = new Date()
+        return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
+      }).length
+    }
+
+    return { productStats, userStats, shareRequestStats }
   }
 
   if (auth.isLoading || isLoading) {
@@ -191,7 +247,7 @@ export default function AdminDashboard() {
     )
   }
 
-  const { productStats, userStats } = getStats()
+  const { productStats, userStats, shareRequestStats } = getStats()
 
   return (
     <div className="px-4 py-6">
@@ -239,6 +295,17 @@ export default function AdminDashboard() {
             <FiUsers size={16} />
             사용자 관리
           </button>
+          <button
+            onClick={() => setActiveTab('shareRequests')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'shareRequests'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <FiHeart size={16} />
+            나눔 신청 관리
+          </button>
         </div>
 
         {/* 개요 탭 */}
@@ -278,6 +345,21 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center">
                   <div className="text-2xl font-bold text-purple-600">{userStats.thisMonth}</div>
                   <div className="text-sm text-gray-600">이번 달 신규</div>
+                </div>
+              </div>
+            </div>
+
+            {/* 나눔 신청 통계 */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">나눔 신청 통계</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center">
+                  <div className="text-2xl font-bold text-pink-600">{shareRequestStats.total}</div>
+                  <div className="text-sm text-gray-600">전체 나눔 신청</div>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center">
+                  <div className="text-2xl font-bold text-orange-600">{shareRequestStats.thisMonth}</div>
+                  <div className="text-sm text-gray-600">이번 달 신청</div>
                 </div>
               </div>
             </div>
@@ -462,6 +544,91 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 나눔 신청 관리 탭 */}
+        {activeTab === 'shareRequests' && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">나눔 신청 관리</h2>
+            {shareRequests.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                <div className="text-gray-400 mb-4">
+                  <FiHeart size={48} className="mx-auto" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">나눔 신청이 없습니다</h3>
+                <p className="text-gray-500">아직 등록된 나눔 신청이 없습니다.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {shareRequests.map((request: any) => (
+                  <div key={request.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
+                          {request.products?.images && request.products.images.length > 0 ? (
+                            <img
+                              src={request.products.images[0]}
+                              alt={request.products?.title || '상품'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              <span className="text-2xl">💝</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                              {request.products?.title || '삭제된 상품'}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              판매자: {request.products?.seller_name || '알 수 없음'}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm text-gray-500">
+                              {new Date(request.created_at).toLocaleDateString()} {new Date(request.created_at).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FiUser size={14} className="text-gray-400" />
+                            <span className="font-medium text-gray-900">신청자: {request.requester_name}</span>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-sm text-gray-700 font-medium mb-1">신청 사연:</p>
+                            <p className="text-sm text-gray-600 whitespace-pre-wrap">{request.reason}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/detail/${request.product_id}`}
+                            className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200 text-sm"
+                          >
+                            <FiEye size={14} />
+                            상품 보기
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteShareRequest(request.id)}
+                            className="flex items-center gap-1 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm"
+                          >
+                            <FiTrash2 size={14} />
+                            신청 삭제
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
